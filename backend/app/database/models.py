@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
@@ -89,4 +89,32 @@ class AgentLog(Base):
     thread_id = Column(Integer, ForeignKey("threads.id"))
     content = Column(Text)
     type = Column(String) # info, command, result, error
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class BackgroundTask(Base):
+    __tablename__ = "background_tasks"
+    id = Column(Integer, primary_key=True)
+    workspace_id = Column(Integer, ForeignKey("workspaces.id"))
+    status = Column(String, default="pending") # pending, running, completed, failed, blocked
+    task_type = Column(String) # agent_run, repo_index, etc.
+    payload = Column(JSON)
+    result = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+class TaskLog(Base):
+    __tablename__ = "task_logs"
+    id = Column(Integer, primary_key=True)
+    task_id = Column(Integer, ForeignKey("background_tasks.id"))
+    content = Column(Text)
+    level = Column(String) # info, warning, error
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class BlockerNotification(Base):
+    __tablename__ = "blocker_notifications"
+    id = Column(Integer, primary_key=True)
+    task_id = Column(Integer, ForeignKey("background_tasks.id"))
+    reason = Column(Text)
+    resolved = Column(Boolean, default=False)
+    resolution = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

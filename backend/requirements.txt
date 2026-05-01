@@ -13,3 +13,5 @@ langchain-core
 langchain-openai
 redis
 alembic
+celery[redis]
+flower

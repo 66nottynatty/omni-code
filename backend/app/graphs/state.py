@@ -9,3 +9,4 @@ class AgentState(TypedDict):
     github_token: str | None
     thread_id: int | None
     workspace_id: int | None
+    task_id: int | None

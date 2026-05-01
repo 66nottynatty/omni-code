@@ -9,12 +9,16 @@ interface LogEntry {
   type: 'info' | 'command' | 'result' | 'error';
 }
 
-export default function AgentLogsPanel({ threadId }: { threadId: number }) {
+export default function AgentLogsPanel({ threadId, taskId }: { threadId?: number; taskId?: number }) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const eventSource = new EventSource(`${process.env.NEXT_PUBLIC_API_URL}/api/threads/${threadId}/logs/sse`);
+    const url = taskId 
+      ? `${process.env.NEXT_PUBLIC_API_URL}/api/tasks/${taskId}/logs/sse`
+      : `${process.env.NEXT_PUBLIC_API_URL}/api/threads/${threadId}/logs/sse`;
+    
+    const eventSource = new EventSource(url);
     
     eventSource.onmessage = (event) => {
       const newLog = JSON.parse(event.data);
@@ -22,7 +26,7 @@ export default function AgentLogsPanel({ threadId }: { threadId: number }) {
     };
 
     return () => eventSource.close();
-  }, [threadId]);
+  }, [threadId, taskId]);
 
   useEffect(() => {
     if (scrollRef.current) {

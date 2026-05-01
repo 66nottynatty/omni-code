@@ -90,3 +90,35 @@ def run_terminal(thread_id: int, command: str) -> str:
         return output if output else "Command executed with no output."
     except Exception as e:
         return str(e)
+
+@tool
+def report_blocker(task_id: int, reason: str) -> str:
+    """Report a blocker that prevents the agent from continuing."""
+    db = SessionLocal()
+    try:
+        from app.database.models import BackgroundTask, BlockerNotification
+        task = db.query(BackgroundTask).get(task_id)
+        if task:
+            task.status = "blocked"
+            blocker = BlockerNotification(task_id=task_id, reason=reason)
+            db.add(blocker)
+            db.commit()
+            
+            # Webhook notification
+            payload = task.payload or {}
+            webhook_url = payload.get("webhook_url")
+            if webhook_url:
+                import httpx
+                try:
+                    httpx.post(webhook_url, json={
+                        "task_id": task_id, 
+                        "status": "blocked",
+                        "reason": reason
+                    }, timeout=5.0)
+                except Exception as e:
+                    print(f"Failed to send webhook: {e}")
+
+            return f"Blocker reported: {reason}. Task is now paused."
+        return "Task not found."
+    finally:
+        db.close()
