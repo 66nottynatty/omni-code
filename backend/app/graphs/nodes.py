@@ -1,10 +1,11 @@
 from typing import Literal
 from .state import AgentState
-from app.intelligence.tools import read_file, write_file, search_codebase, run_terminal, report_blocker
+from app.intelligence.tools import read_file, write_file, search_codebase, run_terminal, report_blocker, read_skill
 from app.core.model_provider import ModelProvider
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import ToolMessage, SystemMessage
 from app.database.session import SessionLocal
 from app.database.models import TaskLog
+from app.intelligence.skill_registry import get_skill_registry
 import redis
 import logging
 import json
@@ -14,7 +15,7 @@ from app.core.config import get_settings
 settings = get_settings()
 redis_client = redis.from_url(settings.redis_url)
 
-tools = [read_file, write_file, search_codebase, run_terminal, report_blocker]
+tools = [read_file, write_file, search_codebase, run_terminal, report_blocker, read_skill]
 tools_by_name = {t.name: t for t in tools}
 
 def _log_to_db_and_redis(task_id: int | None, content: str, level: str = "info"):
@@ -90,3 +91,57 @@ def should_continue(state: AgentState) -> Literal["tools", "__end__"]:
     if last_message.tool_calls:
         return "tools"
     return "__end__"
+
+
+def inject_skills_node(state: AgentState) -> dict:
+    """
+    Inject relevant skills into the agent state at the start of the workflow.
+    
+    This node uses semantic search to find skills relevant to the current task
+    and prepends them as a system message for better agent performance.
+    """
+    task_id = state.get("task_id")
+    workspace_id = state.get("workspace_id")
+    messages = state.get("messages", [])
+    
+    # Extract context from user message
+    context = ""
+    for msg in reversed(messages):
+        if hasattr(msg, 'type') and msg.type == 'human':
+            context = msg.content if hasattr(msg, 'content') else ""
+            break
+        elif isinstance(msg, dict) and msg.get('type') == 'human':
+            context = msg.get('content', '')
+            break
+    
+    if not context:
+        return {}
+    
+    _log_to_db_and_redis(task_id, "Finding relevant skills for current task...")
+    
+    try:
+        registry = get_skill_registry()
+        try:
+            skill_summaries = registry.get_skills_for_task(context, workspace_id)
+            
+            if skill_summaries:
+                skills_content = "\n\n---\n\n".join(skill_summaries)
+                system_message = SystemMessage(
+                    content=(
+                        "## Relevant Skills for This Task\n\n"
+                        "The following skills may be helpful for your current task:\n\n"
+                        f"{skills_content}\n\n"
+                        "You can use the `read_skill` tool to get full skill details if needed."
+                    )
+                )
+                _log_to_db_and_redis(
+                    task_id, 
+                    f"Injected {len(skill_summaries)} relevant skills into context"
+                )
+                return {"messages": [system_message]}
+        finally:
+            registry.db.close()
+    except Exception as e:
+        _log_to_db_and_redis(task_id, f"Failed to inject skills: {str(e)}", level="warning")
+    
+    return {}

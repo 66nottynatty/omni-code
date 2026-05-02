@@ -35,8 +35,17 @@ from app.schemas.model import (
     ModelSelectionCreate,
     ModelSelectionResponse,
 )
+from app.schemas.skill import (
+    SkillCreate,
+    SkillUpdate,
+    SkillResponse,
+    SkillSummary,
+    SkillSearchRequest,
+    WorkspaceAnalysisResponse,
+)
 
 __all__ = [
+    # Base
     "PaginationParams",
     "PaginatedResponse",
     "TimestampMixin",
@@ -44,6 +53,7 @@ __all__ = [
     "ErrorDetail",
     "ErrorResponse",
     "SuccessResponse",
+    # Task
     "TaskStatus",
     "TaskType",
     "TaskCreate",
@@ -53,6 +63,7 @@ __all__ = [
     "BlockerResolve",
     "TaskLogResponse",
     "BlockerNotificationResponse",
+    # Thread
     "ThreadCreate",
     "ThreadResponse",
     "MessageCreate",
@@ -60,8 +71,16 @@ __all__ = [
     "ActionHistoryResponse",
     "AgentLogResponse",
     "RollbackRequest",
+    # Model
     "CostTier",
     "ModelResponse",
     "ModelSelectionCreate",
     "ModelSelectionResponse",
+    # Skill
+    "SkillCreate",
+    "SkillUpdate",
+    "SkillResponse",
+    "SkillSummary",
+    "SkillSearchRequest",
+    "WorkspaceAnalysisResponse",
 ]

@@ -122,3 +122,50 @@ def report_blocker(task_id: int, reason: str) -> str:
         return "Task not found."
     finally:
         db.close()
+
+
+@tool
+def read_skill(skill_name: str, workspace_id: int | None = None) -> str:
+    """Read the full content of a skill from the skills library.
+    
+    Use this tool when you need detailed guidance on a specific topic.
+    The skill library contains expert knowledge on various technical domains.
+    
+    Args:
+        skill_name: The name of the skill to read. Options include:
+            - python_expert: Python development best practices
+            - react_specialist: React and frontend development
+            - fastapi_best_practices: FastAPI and REST API patterns
+            - sql_optimization: Database query optimization
+            - tdd_master: Test-driven development
+            - security_auditor: Security best practices
+            - refactoring_master: Code refactoring patterns
+            - api_designer: API design principles
+            - devops_cicd: CI/CD and DevOps practices
+            - documentation_specialist: Technical documentation
+            - git_workflow: Git workflows and best practices
+            - clean_architecture: Architecture patterns
+            - performance_tuning: Performance optimization
+        workspace_id: Optional workspace ID to look for workspace-specific skills first
+    
+    Returns:
+        The full content of the skill with expert guidance.
+    """
+    db = SessionLocal()
+    try:
+        from app.intelligence.skill_registry import SkillRegistry
+        
+        registry = SkillRegistry(db)
+        skill = registry.get_skill_by_name(skill_name, workspace_id)
+        
+        if not skill:
+            available_skills = registry.list_skills(workspace_id=workspace_id)
+            skill_names = [s.name for s in available_skills]
+            return (
+                f"Skill '{skill_name}' not found. "
+                f"Available skills: {', '.join(skill_names)}"
+            )
+        
+        return f"# {skill.name}\n\n{skill.content}"
+    finally:
+        db.close()

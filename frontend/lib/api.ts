@@ -103,3 +103,74 @@ export async function checkHealth() {
   const response = await api.get("/health")
   return response.data
 }
+
+// Skills API helpers
+export async function getSkills(workspaceId?: number, category?: string) {
+  const params = new URLSearchParams()
+  if (workspaceId) params.append('workspace_id', workspaceId.toString())
+  if (category) params.append('category', category)
+
+  const response = await api.get(`/api/skills?${params.toString()}`)
+  return response.data
+}
+
+export async function getSkill(skillId: number) {
+  const response = await api.get(`/api/skills/${skillId}`)
+  return response.data
+}
+
+export async function createSkill(skill: {
+  name: string
+  description: string
+  content: string
+  category: string
+  workspace_id?: number | null
+  is_global?: boolean
+}) {
+  const response = await api.post("/api/skills", skill)
+  return response.data
+}
+
+export async function updateSkill(skillId: number, skill: {
+  name?: string
+  description?: string
+  content?: string
+  category?: string
+}) {
+  const response = await api.put(`/api/skills/${skillId}`, skill)
+  return response.data
+}
+
+export async function deleteSkill(skillId: number) {
+  const response = await api.delete(`/api/skills/${skillId}`)
+  return response.data
+}
+
+export async function searchSkills(query: string, workspaceId?: number) {
+  const response = await api.post("/api/skills/search", {
+    query,
+    workspace_id: workspaceId,
+    limit: 3
+  })
+  return response.data
+}
+
+export async function getSkillCategories(workspaceId?: number) {
+  const params = new URLSearchParams()
+  if (workspaceId) params.append('workspace_id', workspaceId.toString())
+
+  const response = await api.get(`/api/skills/categories?${params.toString()}`)
+  return response.data
+}
+
+export async function generateWorkspaceSkill(workspaceId: number) {
+  const response = await api.post(`/api/workspaces/${workspaceId}/generate-skill`, {
+    workspace_path: '/workspace'
+  })
+  return response.data
+}
+
+export async function analyzeWorkspace(workspaceId: number) {
+  const response = await api.get(`/api/workspaces/${workspaceId}/analyze`)
+  return response.data
+}

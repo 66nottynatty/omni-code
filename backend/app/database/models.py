@@ -30,6 +30,7 @@ class Workspace(Base):
     code_chunks = relationship("CodeChunk", back_populates="workspace")
     workspace_memories = relationship("WorkspaceMemory", back_populates="workspace")
     background_tasks = relationship("BackgroundTask", back_populates="workspace")
+    skills = relationship("Skill", back_populates="workspace")
 
     __table_args__ = (
         Index("ix_workspaces_owner_repo", "owner", "repo"),
@@ -204,4 +205,25 @@ class BlockerNotification(Base):
 
     __table_args__ = (
         Index("ix_blocker_notifications_task_resolved", "task_id", "resolved"),
+    )
+
+
+class Skill(Base):
+    __tablename__ = "skills"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, index=True)
+    description = Column(Text)
+    content = Column(Text)
+    embedding = Column(Vector(1536))
+    workspace_id = Column(Integer, ForeignKey("workspaces.id"), nullable=True, index=True)
+    is_global = Column(Boolean, default=False, index=True)
+    category = Column(String, index=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    workspace = relationship("Workspace", back_populates="skills")
+
+    __table_args__ = (
+        Index("ix_skills_workspace_global", "workspace_id", "is_global"),
+        Index("ix_skills_name_workspace", "name", "workspace_id"),
     )
