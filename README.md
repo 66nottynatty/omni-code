@@ -1,78 +1,96 @@
 # OmniCode
 
-AI-powered code analysis and automation platform featuring a Next.js 14 frontend, FastAPI backend with LangGraph, and Dockerized infrastructure.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/yourusername/omnicode/releases)
 
-## Architecture
+AI-powered code analysis and automation platform. OmniCode leverages advanced agentic workflows to help developers understand, refactor, and automate their codebase.
 
+## 🚀 Features
+
+- **Agentic Workflows**: Powered by LangGraph for complex, multi-step code reasoning and execution.
+- **Modern Tech Stack**: Next.js 14 (App Router), FastAPI, and PostgreSQL with pgvector.
+- **Interactive UI**: Real-time updates, code exploration, and terminal-like experience.
+- **GitHub Integration**: Seamless authentication and repository access via GitHub OAuth.
+- **Self-Hostable**: Easy deployment with Docker and Docker Compose.
+- **Production Ready**: Structured logging, rate limiting, and secure configuration.
+
+## 🏗️ Architecture
+
+OmniCode consists of three main components:
+
+1.  **Frontend**: A Next.js 14 application providing a rich, responsive interface using Tailwind CSS and shadcn/ui.
+2.  **Backend**: A FastAPI server that handles API requests, manages state, and orchestrates LangGraph agents.
+3.  **Worker**: A Celery worker for processing long-running AI tasks asynchronously.
+
+```mermaid
+graph TD
+    A[Frontend] <--> B[FastAPI Backend]
+    B <--> C[PostgreSQL + pgvector]
+    B <--> D[Redis]
+    B <--> E[Celery Worker]
+    E <--> D
+    E <--> F[OpenAI API]
+    E <--> G[GitHub API]
 ```
-├── frontend/          # Next.js 14 with Tailwind + shadcn/ui + NextAuth
-├── backend/          # FastAPI with LangGraph agentic workflows
-└── docker-compose.yml
-```
 
-## Features
-
-- **Frontend**: Next.js 14 App Router, Tailwind CSS, shadcn/ui components, GitHub OAuth via NextAuth
-- **Backend**: FastAPI with LangGraph for agentic workflows, PostgreSQL persistence, Redis caching
-- **Infrastructure**: Docker Compose with PostgreSQL 15, Redis 7, multi-stage builds
-
-## Quick Start
+## 🛠️ Getting Started
 
 ### Prerequisites
 
 - Docker & Docker Compose v2
-- Node.js 20+ (for local development)
-- Python 3.12+ (for local development)
+- GitHub OAuth Application ([Create one here](https://github.com/settings/developers))
+- OpenAI API Key
 
-### Setup
+### Quick Start (Local Development)
 
-1. Copy environment variables:
-   ```bash
-   cp .env.example .env
-   ```
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/yourusername/omnicode.git
+    cd omnicode
+    ```
 
-2. Update `.env` with your GitHub OAuth credentials:
-   - Create a GitHub OAuth App at https://github.com/settings/developers
-   - Set callback URL to `http://localhost:3000/api/auth/callback/github`
+2.  **Configure Environment Variables**:
+    ```bash
+    cp .env.example .env
+    ```
+    Update `.env` with your `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and `OPENAI_API_KEY`.
 
-3. Start services:
-   ```bash
-   docker-compose up
-   ```
+3.  **Start the services**:
+    ```bash
+    docker-compose up
+    ```
 
-4. Access the application:
-   - Frontend: http://localhost:3000
-   - API Docs: http://localhost:8000/docs
+4.  **Initialize the Database**:
+    ```bash
+    docker-compose exec backend python init_db.py
+    ```
 
-## Development
+5.  **Access the application**:
+    - Frontend: [http://localhost:3000](http://localhost:3000)
+    - API Documentation: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-### Frontend
+### 📦 Self-Hosting (Production)
+
+For production environments, use the provided production configuration:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+docker-compose -f docker-compose.prod.yml up -d
 ```
 
-### Backend
+Ensure you have set the following production-specific variables in your `.env`:
+- `ENVIRONMENT=production`
+- `NEXTAUTH_URL=https://your-domain.com`
+- `ENCRYPTION_KEY` (Generate with instructions in `.env.example`)
+- `JWT_SECRET` (Generate with instructions in `.env.example`)
 
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload
-```
+## 🤝 Contributing
 
-## Tech Stack
+We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started.
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js 14, React 18, Tailwind CSS, shadcn/ui |
-| Auth | NextAuth.js with GitHub OAuth |
-| Backend | FastAPI, LangGraph, Pydantic |
-| Database | PostgreSQL 15 |
-| Cache | Redis 7 |
-| Container | Docker Compose |
+## 🛡️ Security
 
-## License
+If you discover a security vulnerability within OmniCode, please see our [SECURITY.md](SECURITY.md).
 
-MIT
+## 📄 License
+
+OmniCode is open-source software licensed under the [MIT license](LICENSE).
