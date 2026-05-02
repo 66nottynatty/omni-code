@@ -29,4 +29,4 @@ pytest-asyncio==0.23.6
 pytest-cov==4.1.0
 aiosqlite==0.20.0
 pyyaml==6.0.1
-openai>=1.0.0
+openai>=1.0.0APScheduler==3.10.4

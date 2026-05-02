@@ -31,6 +31,7 @@ class User(Base):
     username = Column(String, index=True)
     email = Column(String, index=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)
 
     model_selections = relationship("ModelSelection", back_populates="user")
 
@@ -42,6 +43,7 @@ class Workspace(Base):
     repo = Column(String, index=True)
     branch = Column(String, default="main")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)
 
     threads = relationship("Thread", back_populates="workspace")
     code_chunks = relationship("CodeChunk", back_populates="workspace")
@@ -60,6 +62,7 @@ class Thread(Base):
     workspace_id = Column(Integer, ForeignKey("workspaces.id"), index=True)
     title = Column(String)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)
 
     workspace = relationship("Workspace", back_populates="threads")
     messages = relationship("Message", back_populates="thread")
@@ -75,6 +78,7 @@ class Message(Base):
     role = Column(String)
     content = Column(Text)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)
 
     thread = relationship("Thread", back_populates="messages")
 
@@ -97,6 +101,7 @@ class CodeChunk(Base):
     end_line = Column(Integer, nullable=True)
     embedding = Column(Vector(1536))
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     workspace = relationship("Workspace", back_populates="code_chunks")
@@ -115,6 +120,7 @@ class WorkspaceMemory(Base):
     value = Column(Text)
     embedding = Column(Vector(1536))
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)
 
     workspace = relationship("Workspace", back_populates="workspace_memories")
 
@@ -133,6 +139,7 @@ class ActionHistory(Base):
     content_after = Column(Text, nullable=True)
     command = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)
 
     thread = relationship("Thread", back_populates="action_history")
 
@@ -149,6 +156,7 @@ class PendingChange(Base):
     diff = Column(Text)
     status = Column(String, default="pending", index=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)
 
     thread = relationship("Thread", back_populates="pending_changes")
 
@@ -179,6 +187,7 @@ class AgentLog(Base):
     content = Column(Text)
     type = Column(String, index=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)
 
     thread = relationship("Thread", back_populates="agent_logs")
 
@@ -196,6 +205,7 @@ class BackgroundTask(Base):
     payload = Column(JSON)
     result = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     workspace = relationship("Workspace", back_populates="background_tasks")
@@ -215,6 +225,7 @@ class TaskLog(Base):
     content = Column(Text)
     level = Column(String, index=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)
 
     task = relationship("BackgroundTask", back_populates="task_logs")
 
@@ -231,6 +242,7 @@ class BlockerNotification(Base):
     resolved = Column(Boolean, default=False, index=True)
     resolution = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)
 
     task = relationship("BackgroundTask", back_populates="blocker_notifications")
 
@@ -252,6 +264,7 @@ class Skill(Base):
     skill_type = Column(String, default="general", index=True)  # workflow, integration, general
     compatibilities = Column(JSON, default=list)  # ["warp", "github", "etc"]
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     workspace = relationship("Workspace", back_populates="skills")
@@ -269,6 +282,7 @@ class TaskGraphModel(Base):
     status = Column(String, index=True)
     workspace_id = Column(Integer, ForeignKey("workspaces.id"), index=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     subtasks = relationship("SubTaskModel", back_populates="graph", cascade="all, delete-orphan")
@@ -292,6 +306,7 @@ class SubTaskModel(Base):
     retry_count = Column(Integer, default=0)
     max_retries = Column(Integer, default=3)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)
     completed_at = Column(DateTime, nullable=True)
 
     graph = relationship("TaskGraphModel", back_populates="subtasks")
@@ -304,6 +319,7 @@ class TaskCheckpointModel(Base):
     checkpoint_number = Column(Integer)
     state_snapshot = Column(CompressedJSON)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)
 
     graph = relationship("TaskGraphModel", back_populates="checkpoints")
 
@@ -316,3 +332,4 @@ class AgentSessionModel(Base):
     status = Column(String, index=True)
     last_heartbeat = Column(DateTime, default=datetime.datetime.utcnow)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)
