@@ -12,6 +12,8 @@ interface Skill {
   description: string;
   content: string;
   category: string;
+  skill_type: string;
+  compatibilities: string[];
   workspace_id?: number | null;
   is_global?: boolean;
 }
@@ -38,6 +40,8 @@ export default function SkillEditor({
     description: '',
     content: '',
     category: 'General',
+    skill_type: 'general',
+    compatibilities: [],
   });
   const [saving, setSaving] = useState(false);
 
@@ -49,6 +53,8 @@ export default function SkillEditor({
         description: skill.description,
         content: skill.content,
         category: skill.category,
+        skill_type: skill.skill_type || 'general',
+        compatibilities: skill.compatibilities || [],
         workspace_id: skill.workspace_id,
         is_global: skill.is_global,
       });
@@ -58,6 +64,8 @@ export default function SkillEditor({
         description: '',
         content: '',
         category: 'General',
+        skill_type: 'general',
+        compatibilities: [],
         workspace_id: workspaceId || null,
         is_global: false,
       });
@@ -125,6 +133,38 @@ export default function SkillEditor({
                     </option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Skill Type
+                </label>
+                <select
+                  name="skill_type"
+                  value={formData.skill_type}
+                  onChange={handleChange}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <option value="general">General</option>
+                  <option value="workflow">Workflow</option>
+                  <option value="integration">Integration</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Compatibility (comma separated)
+                </label>
+                <Input
+                  name="compatibilities"
+                  value={formData.compatibilities.join(', ')}
+                  onChange={(e) => {
+                    const values = e.target.value.split(',').map(s => s.trim()).filter(s => s !== '');
+                    setFormData(prev => ({ ...prev, compatibilities: values }));
+                  }}
+                  placeholder="e.g., warp, github, vercel"
+                />
               </div>
             </div>
 

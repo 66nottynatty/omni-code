@@ -7,8 +7,9 @@ import GenerateSkillButton from '@/components/skills/GenerateSkillButton';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Layers, Puzzle, Info } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 interface Skill {
   id: number;
@@ -16,6 +17,8 @@ interface Skill {
   description: string;
   content: string;
   category: string;
+  skill_type: string;
+  compatibilities: string[];
   is_global: boolean;
   workspace_id: number | null;
   created_at: string;
@@ -50,6 +53,7 @@ export default function SkillsPage({ workspaceId }: SkillsPageProps) {
   const [viewingSkill, setViewingSkill] = useState<Skill | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('all');
 
   useEffect(() => {
     fetchCategories();
@@ -72,6 +76,11 @@ export default function SkillsPage({ workspaceId }: SkillsPageProps) {
     const params = new URLSearchParams();
     if (workspaceId) params.append('workspace_id', workspaceId.toString());
     if (selectedCategory) params.append('category', selectedCategory);
+    if (activeTab !== 'all') {
+      const type = activeTab === 'workflows' ? 'workflow' : 
+                   activeTab === 'integrations' ? 'integration' : 'general';
+      params.append('skill_type', type);
+    }
 
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/skills?${params.toString()}`)
       .then((res) => res.json())
@@ -87,7 +96,7 @@ export default function SkillsPage({ workspaceId }: SkillsPageProps) {
 
   useEffect(() => {
     fetchSkills();
-  }, [workspaceId, selectedCategory]);
+  }, [workspaceId, selectedCategory, activeTab]);
 
   const handleSaveSkill = async (skill: Partial<Skill>) => {
     const url = skill.id
@@ -104,6 +113,8 @@ export default function SkillsPage({ workspaceId }: SkillsPageProps) {
         description: skill.description,
         content: skill.content,
         category: skill.category,
+        skill_type: skill.skill_type || 'general',
+        compatibilities: skill.compatibilities || [],
         workspace_id: workspaceId || null,
         is_global: skill.is_global || false,
       }),
@@ -176,7 +187,7 @@ export default function SkillsPage({ workspaceId }: SkillsPageProps) {
               size="sm"
               onClick={() => setSelectedCategory(null)}
             >
-              All
+              All Categories
             </Button>
             {categories.slice(0, 6).map((cat) => (
               <Button
@@ -190,6 +201,24 @@ export default function SkillsPage({ workspaceId }: SkillsPageProps) {
             ))}
           </div>
         </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="all">All Skills</TabsTrigger>
+            <TabsTrigger value="workflows" className="flex items-center gap-2">
+              <Layers className="h-4 w-4" />
+              Workflows
+            </TabsTrigger>
+            <TabsTrigger value="integrations" className="flex items-center gap-2">
+              <Puzzle className="h-4 w-4" />
+              Integrations
+            </TabsTrigger>
+            <TabsTrigger value="general" className="flex items-center gap-2">
+              <Info className="h-4 w-4" />
+              General
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         {workspaceId && (
           <GenerateSkillButton

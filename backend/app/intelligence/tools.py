@@ -166,6 +166,12 @@ def read_skill(skill_name: str, workspace_id: int | None = None) -> str:
                 f"Available skills: {', '.join(skill_names)}"
             )
         
-        return f"# {skill.name}\n\n{skill.content}"
+        metadata = (
+            f"Type: {skill.skill_type}\n"
+            f"Compatibility: {', '.join(skill.compatibilities) if skill.compatibilities else 'None'}\n"
+            f"Category: {skill.category}"
+        )
+        
+        return f"# {skill.name}\n\n{metadata}\n\n---\n\n{skill.content}"
     finally:
         db.close()

@@ -126,6 +126,8 @@ class SkillRegistry:
         description: str,
         content: str,
         category: str = "general",
+        skill_type: str = "general",
+        compatibilities: list[str] = None,
         workspace_id: Optional[int] = None,
         is_global: bool = False
     ) -> Skill:
@@ -141,6 +143,8 @@ class SkillRegistry:
             description=description,
             content=content,
             category=category,
+            skill_type=skill_type,
+            compatibilities=compatibilities or [],
             workspace_id=workspace_id,
             is_global=is_global,
             embedding=embedding
@@ -158,7 +162,9 @@ class SkillRegistry:
         name: Optional[str] = None,
         description: Optional[str] = None,
         content: Optional[str] = None,
-        category: Optional[str] = None
+        category: Optional[str] = None,
+        skill_type: Optional[str] = None,
+        compatibilities: Optional[list[str]] = None
     ) -> Optional[Skill]:
         """Update an existing skill."""
         skill = self.get_skill_by_id(skill_id)
@@ -173,6 +179,10 @@ class SkillRegistry:
             skill.content = content
         if category is not None:
             skill.category = category
+        if skill_type is not None:
+            skill.skill_type = skill_type
+        if compatibilities is not None:
+            skill.compatibilities = compatibilities
         
         # Regenerate embedding if content changed
         if name is not None or description is not None or content is not None:
@@ -203,6 +213,7 @@ class SkillRegistry:
         self,
         workspace_id: Optional[int] = None,
         category: Optional[str] = None,
+        skill_type: Optional[str] = None,
         include_global: bool = True
     ) -> list[Skill]:
         """List skills with optional filtering."""
@@ -220,6 +231,9 @@ class SkillRegistry:
         
         if category:
             query = query.filter(Skill.category == category)
+        
+        if skill_type:
+            query = query.filter(Skill.skill_type == skill_type)
         
         return query.order_by(Skill.name).all()
 

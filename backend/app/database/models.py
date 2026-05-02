@@ -75,6 +75,8 @@ class CodeChunk(Base):
     embedding = Column(Vector(1536))
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+    workspace = relationship("Workspace", back_populates="code_chunks")
+
 
 class WorkspaceMemory(Base):
     __tablename__ = "workspace_memories"
@@ -218,6 +220,8 @@ class Skill(Base):
     workspace_id = Column(Integer, ForeignKey("workspaces.id"), nullable=True, index=True)
     is_global = Column(Boolean, default=False, index=True)
     category = Column(String, index=True)
+    skill_type = Column(String, default="general", index=True)  # workflow, integration, general
+    compatibilities = Column(JSON, default=list)  # ["warp", "github", "etc"]
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 

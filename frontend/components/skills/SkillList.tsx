@@ -11,6 +11,8 @@ interface Skill {
   description: string;
   content: string;
   category: string;
+  skill_type: string;
+  compatibilities: string[];
   is_global: boolean;
   workspace_id: number | null;
   created_at: string;
@@ -107,13 +109,18 @@ export default function SkillList({ workspaceId, onEditSkill, onViewSkill }: Ski
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <CardTitle className="text-lg mb-1">{skill.name}</CardTitle>
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
                   <Badge
                     variant="secondary"
                     className={`${getCategoryColor(skill.category)} text-white`}
                   >
                     {skill.category}
                   </Badge>
+                  {skill.skill_type && (
+                    <Badge variant="outline" className="capitalize">
+                      {skill.skill_type}
+                    </Badge>
+                  )}
                   {skill.is_global && (
                     <Badge variant="outline">Global</Badge>
                   )}
@@ -123,6 +130,18 @@ export default function SkillList({ workspaceId, onEditSkill, onViewSkill }: Ski
             <CardDescription className="line-clamp-2">
               {skill.description}
             </CardDescription>
+            {skill.compatibilities && skill.compatibilities.length > 0 && (
+              <div className="mt-3">
+                <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Compatibility</p>
+                <div className="flex flex-wrap gap-1">
+                  {skill.compatibilities.map(comp => (
+                    <Badge key={comp} variant="secondary" className="text-[9px] px-1 py-0 h-4 uppercase bg-zinc-100 dark:bg-zinc-800">
+                      {comp}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <div className="flex gap-2">

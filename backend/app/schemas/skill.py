@@ -25,6 +25,8 @@ class SkillCreate(BaseModel):
     description: str = Field(..., min_length=1, max_length=500)
     content: str = Field(...)
     category: str = Field(default="general")
+    skill_type: str = Field(default="general")
+    compatibilities: List[str] = Field(default_factory=list)
     workspace_id: Optional[int] = None
     is_global: bool = Field(default=False)
 
@@ -35,6 +37,8 @@ class SkillCreate(BaseModel):
                 "description": "A custom skill for this workspace",
                 "content": "# Custom Skill\n\nDetailed content...",
                 "category": "Engineering",
+                "skill_type": "workflow",
+                "compatibilities": ["warp"],
                 "workspace_id": 1,
                 "is_global": False
             }
@@ -47,6 +51,8 @@ class SkillUpdate(BaseModel):
     description: Optional[str] = Field(None, max_length=500)
     content: Optional[str] = None
     category: Optional[str] = None
+    skill_type: Optional[str] = None
+    compatibilities: Optional[List[str]] = None
 
 
 class SkillResponse(BaseModel):
@@ -55,6 +61,8 @@ class SkillResponse(BaseModel):
     description: str
     content: str
     category: str
+    skill_type: str
+    compatibilities: List[str]
     workspace_id: Optional[int]
     is_global: bool
     created_at: datetime
@@ -68,6 +76,8 @@ class SkillSummary(BaseModel):
     name: str
     description: str
     category: str
+    skill_type: str
+    compatibilities: List[str]
     is_global: bool
     workspace_id: Optional[int]
 
