@@ -41,6 +41,14 @@ from app.schemas import (
     HealthResponse,
     ErrorResponse,
 )
+from app.schemas.skill import (
+    SkillCreate,
+    SkillUpdate,
+    SkillResponse,
+    SkillSummary,
+    SkillSearchRequest,
+    WorkspaceAnalysisResponse,
+)
 from app.graphs.workflow import workflow
 from app.database.session import engine, get_db
 from app.database.models import (
@@ -428,6 +436,183 @@ async def stream_logs(request: Request, thread_id: int):
             yield f"data: {json.dumps({'content': 'Agent heartbeat', 'type': 'info'})}\n\n"
             await asyncio.sleep(10)
     return StreamingResponse(log_generator(), media_type="text/event-stream")
+
+
+# Skills API Endpoints
+@app.get("/api/skills", response_model=list)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+async def list_skills(
+    request: Request,
+    workspace_id: Optional[int] = None,
+    category: Optional[str] = None,
+    include_global: bool = True,
+    db: Session = Depends(get_db)
+):
+    """List all skills, optionally filtered by workspace and category."""
+    from app.intelligence.skill_registry import SkillRegistry
+    registry = SkillRegistry(db)
+    skills = registry.list_skills(
+        workspace_id=workspace_id,
+        category=category,
+        include_global=include_global
+    )
+    return skills
+
+
+@app.get("/api/skills/{skill_id}", response_model=SkillResponse)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+async def get_skill(skill_id: int, db: Session = Depends(get_db)):
+    """Get a specific skill by ID."""
+    from app.intelligence.skill_registry import SkillRegistry
+    registry = SkillRegistry(db)
+    skill = registry.get_skill_by_id(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    return skill
+
+
+@app.post("/api/skills", response_model=SkillResponse)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+async def create_skill(skill_data: SkillCreate, db: Session = Depends(get_db)):
+    """Create a new skill."""
+    logger.info("create_skill", name=skill_data.name, workspace_id=skill_data.workspace_id)
+    
+    from app.intelligence.skill_registry import SkillRegistry
+    registry = SkillRegistry(db)
+    
+    existing = registry.get_skill_by_name(skill_data.name, skill_data.workspace_id)
+    if existing:
+        raise HTTPException(status_code=409, detail="Skill with this name already exists")
+    
+    skill = registry.create_skill(
+        name=skill_data.name,
+        description=skill_data.description,
+        content=skill_data.content,
+        category=skill_data.category,
+        workspace_id=skill_data.workspace_id,
+        is_global=skill_data.is_global
+    )
+    return skill
+
+
+@app.put("/api/skills/{skill_id}", response_model=SkillResponse)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+async def update_skill(skill_id: int, skill_data: SkillUpdate, db: Session = Depends(get_db)):
+    """Update an existing skill."""
+    logger.info("update_skill", skill_id=skill_id)
+    
+    from app.intelligence.skill_registry import SkillRegistry
+    registry = SkillRegistry(db)
+    skill = registry.update_skill(
+        skill_id=skill_id,
+        name=skill_data.name,
+        description=skill_data.description,
+        content=skill_data.content,
+        category=skill_data.category
+    )
+    if not skill:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    return skill
+
+
+@app.delete("/api/skills/{skill_id}", response_model=dict)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+async def delete_skill(skill_id: int, db: Session = Depends(get_db)):
+    """Delete a skill."""
+    logger.info("delete_skill", skill_id=skill_id)
+    
+    from app.intelligence.skill_registry import SkillRegistry
+    registry = SkillRegistry(db)
+    success = registry.delete_skill(skill_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    return {"status": "success", "message": "Skill deleted"}
+
+
+@app.post("/api/skills/search", response_model=list)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+async def search_skills(request: Request, search_request: SkillSearchRequest, db: Session = Depends(get_db)):
+    """Search for skills by relevance to a query."""
+    from app.intelligence.skill_registry import SkillRegistry
+    registry = SkillRegistry(db)
+    skills = registry.find_relevant_skills(
+        query=search_request.query,
+        workspace_id=search_request.workspace_id,
+        limit=search_request.limit
+    )
+    return skills
+
+
+@app.get("/api/skills/categories", response_model=list)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+async def get_skill_categories(
+    request: Request,
+    workspace_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """Get available skill categories."""
+    from app.intelligence.skill_registry import SkillRegistry
+    registry = SkillRegistry(db)
+    return registry.get_skill_categories(workspace_id=workspace_id)
+
+
+@app.post("/api/workspaces/{workspace_id}/generate-skill", response_model=SkillResponse)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+async def generate_workspace_skill(
+    workspace_id: int,
+    request: Request,
+    workspace_path: str = "/workspace",
+    db: Session = Depends(get_db)
+):
+    """Generate a workspace-specific skill by analyzing the workspace."""
+    from app.intelligence.workspace_analyzer import generate_workspace_skill as analyze_and_create_skill
+    from app.intelligence.skill_registry import SkillRegistry
+    from app.database.models import Workspace
+    
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    
+    logger.info("generate_workspace_skill", workspace_id=workspace_id)
+    
+    skill_content, analysis_results = analyze_and_create_skill(workspace_path, workspace_id)
+    
+    registry = SkillRegistry(db)
+    
+    existing = registry.get_skill_by_name("workspace_profile", workspace_id)
+    if existing:
+        registry.delete_skill(existing.id)
+    
+    skill = registry.create_skill(
+        name="workspace_profile",
+        description=f"Auto-generated profile for {workspace.owner}/{workspace.repo} workspace",
+        content=skill_content,
+        category="General",
+        workspace_id=workspace_id,
+        is_global=False
+    )
+    
+    return skill
+
+
+@app.get("/api/workspaces/{workspace_id}/analyze", response_model=WorkspaceAnalysisResponse)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+async def analyze_workspace(
+    workspace_id: int,
+    request: Request,
+    workspace_path: str = "/workspace",
+    db: Session = Depends(get_db)
+):
+    """Analyze a workspace without creating a skill."""
+    from app.intelligence.workspace_analyzer import analyze_workspace as analyze_ws
+    from app.database.models import Workspace
+    
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    
+    results = analyze_ws(workspace_path)
+    return results
 
 
 @app.get("/graph/invoke")
