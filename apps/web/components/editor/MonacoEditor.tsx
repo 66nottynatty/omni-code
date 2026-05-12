@@ -1,10 +1,10 @@
 "use client"
 
 import React, { useEffect, useRef } from "react"
-import Editor, { OnMount, OnChange } from "@monaco-editor/react"
+import Editor, { DiffEditor, OnMount, OnChange } from "@monaco-editor/react"
 import type { editor } from "monaco-editor"
 
-interface MonacoEditorProps {
+export interface MonacoEditorProps {
   value: string
   onChange: (value: string) => void
   language?: string
@@ -140,6 +140,45 @@ export default function MonacoEditor({
           <div className="h-full w-full flex items-center justify-center bg-[#09090b]">
             <div className="text-muted-foreground animate-pulse">
               Loading editor...
+            </div>
+          </div>
+        }
+      />
+    </div>
+  )
+}
+
+export function MonacoDiffEditor({
+  original,
+  modified,
+  language = "typescript",
+  height = "100%"
+}: {
+  original: string
+  modified: string
+  language?: string
+  height?: string | number
+}) {
+  return (
+    <div className="h-full w-full">
+      <DiffEditor
+        height={height}
+        language={language}
+        original={original}
+        modified={modified}
+        theme="vs-dark"
+        options={{
+          renderSideBySide: true,
+          readOnly: true,
+          minimap: { enabled: false },
+          fontSize: 13,
+          fontFamily: "Menlo, Monaco, 'Courier New', monospace",
+          automaticLayout: true,
+        }}
+        loading={
+          <div className="h-full w-full flex items-center justify-center bg-[#09090b]">
+            <div className="text-muted-foreground animate-pulse">
+              Loading diff editor...
             </div>
           </div>
         }

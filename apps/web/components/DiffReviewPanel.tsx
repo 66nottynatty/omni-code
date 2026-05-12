@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { DiffEditor } from '@monaco-editor/react';
+import { MonacoDiffEditor } from './editor/MonacoEditor';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 
@@ -46,16 +46,10 @@ export default function DiffReviewPanel({ change }: { change: PendingChange }) {
         </div>
       </div>
       <div className="flex-1">
-        <DiffEditor
+        <MonacoDiffEditor
           original={change.original_content}
           modified={change.new_content}
           language="typescript"
-          theme="vs-dark"
-          options={{
-            renderSideBySide: true,
-            readOnly: true,
-            minimap: { enabled: false },
-          }}
         />
       </div>
     </div>
