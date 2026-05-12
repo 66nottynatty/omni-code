@@ -92,6 +92,22 @@ export async function analyzeWorkspace(workspaceId: number) {
   return client.workspaces.analyze(workspaceId)
 }
 
+export async function getRepoTree(owner: string, repo: string, branch?: string) {
+  return client.repos.getTree(owner, repo, branch)
+}
+
+export async function getRepoFile(owner: string, repo: string, path: string, branch?: string) {
+  return client.repos.getFile(owner, repo, path, branch)
+}
+
+export async function indexRepo(owner: string, repo: string, branch?: string) {
+  return client.repos.index(owner, repo, branch)
+}
+
+export async function decomposeTask(goal: string, context?: any) {
+  return client.decompose(goal, context)
+}
+
 export async function runOrchestrator(prompt: string, workspaceId: number) {
   return client.orchestrator.run(prompt, workspaceId)
 }

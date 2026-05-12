@@ -16,14 +16,17 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 
-export function ExplorerPanel() {
+export function ExplorerPanel({ tree, onFileSelect, onRefresh }: { tree: any[], onFileSelect: (path: string) => void, onRefresh?: () => void }) {
   return (
     <div className="flex flex-col h-full bg-[#09090b]">
       <div className="h-9 px-4 flex items-center justify-between shrink-0">
         <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Explorer</span>
         <div className="flex items-center gap-1">
           <Plus className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground cursor-pointer" />
-          <RefreshCw className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground cursor-pointer" />
+          <RefreshCw 
+            className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground cursor-pointer" 
+            onClick={onRefresh}
+          />
         </div>
       </div>
       <div className="px-4 py-2 shrink-0">
@@ -37,38 +40,23 @@ export function ExplorerPanel() {
       </div>
       <ScrollArea className="flex-1">
         <div className="py-2">
-          <div className="flex items-center gap-1 px-2 py-1 hover:bg-accent/50 cursor-pointer text-sm">
-            <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            <FolderIcon className="w-4 h-4 text-blue-400 fill-blue-400/20" />
-            <span className="font-medium">src</span>
-          </div>
-          <div className="ml-4">
-            <div className="flex items-center gap-1 px-2 py-1 hover:bg-accent/50 cursor-pointer text-sm">
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              <FolderIcon className="w-4 h-4 text-blue-400 fill-blue-400/20" />
-              <span>components</span>
+          {tree.map((item) => (
+            <div 
+              key={item.path} 
+              className="flex items-center gap-1 px-4 py-1 hover:bg-accent/50 cursor-pointer text-sm"
+              onClick={() => item.type === 'blob' && onFileSelect(item.path)}
+            >
+              {item.type === 'tree' ? (
+                <FolderIcon className="w-4 h-4 text-blue-400 fill-blue-400/20" />
+              ) : (
+                <FileIcon className="w-4 h-4 text-muted-foreground" />
+              )}
+              <span className={item.type === 'tree' ? "font-medium" : ""}>{item.name}</span>
             </div>
-            <div className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary border-r-2 border-primary cursor-pointer text-sm">
-              <div className="w-4" />
-              <FileIcon className="w-4 h-4" />
-              <span>App.tsx</span>
-            </div>
-            <div className="flex items-center gap-1 px-2 py-1 hover:bg-accent/50 cursor-pointer text-sm">
-              <div className="w-4" />
-              <FileIcon className="w-4 h-4 text-orange-400" />
-              <span>index.css</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 px-2 py-1 hover:bg-accent/50 cursor-pointer text-sm">
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            <FolderIcon className="w-4 h-4 text-blue-400 fill-blue-400/20" />
-            <span>public</span>
-          </div>
-          <div className="flex items-center gap-1 px-2 py-1 hover:bg-accent/50 cursor-pointer text-sm text-muted-foreground">
-            <div className="w-4" />
-            <FileIcon className="w-4 h-4 text-yellow-400" />
-            <span>package.json</span>
-          </div>
+          ))}
+          {tree.length === 0 && (
+            <div className="px-4 py-2 text-xs text-muted-foreground">Loading tree...</div>
+          )}
         </div>
       </ScrollArea>
     </div>

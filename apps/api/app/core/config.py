@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     # OpenAI API
     openai_api_key: str = Field(default="")
 
+    # DeepSeek API
+    deepseek_api_key: str = Field(default="")
+
     # CORS configuration
     cors_origins: List[str] = Field(default=["http://localhost:3000"])
     cors_allow_credentials: bool = Field(default=True)

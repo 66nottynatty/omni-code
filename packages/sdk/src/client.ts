@@ -249,4 +249,24 @@ export class OmniCodeClient {
     const response = await this.client.post(`/api/rollback/${actionId}`);
     return response.data;
   };
+
+  repos = {
+    getTree: async (owner: string, repo: string, branch: string = "main"): Promise<any[]> => {
+      const response = await this.client.get(`/api/repos/${owner}/${repo}/tree`, { params: { branch } });
+      return response.data;
+    },
+    getFile: async (owner: string, repo: string, path: string, branch: string = "main"): Promise<{ content: string; sha: string }> => {
+      const response = await this.client.get(`/api/repos/${owner}/${repo}/file`, { params: { path, branch } });
+      return response.data;
+    },
+    index: async (owner: string, repo: string, branch: string = "main"): Promise<any> => {
+      const response = await this.client.post(`/api/repos/${owner}/${repo}/index`, null, { params: { branch } });
+      return response.data;
+    },
+  };
+
+  decompose = async (goal: string, context: any = {}): Promise<any> => {
+    const response = await this.client.post('/api/decompose', { goal, context });
+    return response.data;
+  };
 }

@@ -116,6 +116,36 @@ async def store_token(data: dict, db: Session = Depends(get_db)):
         db.commit()
     return {"status": "success"}
 
+@app.post("/api/repos/{owner}/{repo}/index")
+async def index_repository(owner: str, repo: str, branch: str = "main", db: Session = Depends(get_db)):
+    token = get_user_github_token(1, db)
+    from app.intelligence.indexer import CodebaseIndexer
+    from app.core.scheduler import scheduler
+    
+    workspace = db.query(Workspace).filter(Workspace.owner == owner, Workspace.repo == repo).first()
+    if not workspace:
+        workspace = Workspace(owner=owner, repo=repo, branch=branch)
+        db.add(workspace)
+        db.commit()
+        db.refresh(workspace)
+    
+    indexer = CodebaseIndexer(db, token)
+    scheduler.add_job(
+        indexer.index_repo,
+        args=[workspace.id, owner, repo, branch]
+    )
+    
+    return {"status": "indexing_started", "workspace_id": workspace.id}
+
+@app.post("/api/decompose")
+async def decompose_task(data: dict):
+    from app.orchestrator.decomposer import TaskDecomposer
+    decomposer = TaskDecomposer()
+    goal = data.get("goal")
+    context = data.get("context", {})
+    graph = await decomposer.decompose(goal, context)
+    return graph
+
 @app.websocket("/ws/terminal/{session_id}")
 async def terminal_ws(websocket: WebSocket, session_id: str):
   await websocket.accept()
