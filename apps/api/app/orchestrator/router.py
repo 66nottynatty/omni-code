@@ -67,7 +67,7 @@ async def preview_orchestrator(
         "workspace_id": request_data.workspace_id,
         "prefer_local": request_data.prefer_local
     }
-    graph = await engine.decomposer.decompose(request_data.prompt, context)
+    graph = await engine.decomposer.decompose(request_data.prompt, context, db=db)
     
     # Add timestamps for schema
     graph_dict = graph.model_dump() if hasattr(graph, 'model_dump') else graph.dict()
@@ -361,7 +361,7 @@ async def recover_graph(
         "error": "User requested recovery"
     }
     
-    new_graph = await engine.decomposer.replan(original_graph, failure_context)
+    new_graph = await engine.decomposer.replan(original_graph, failure_context, db=db)
     
     # Update status
     await db.execute(

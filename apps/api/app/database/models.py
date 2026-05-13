@@ -333,3 +333,14 @@ class AgentSessionModel(Base):
     last_heartbeat = Column(DateTime, default=datetime.datetime.utcnow)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     access_token_encrypted = Column(String, nullable=True)
+
+
+class ModelFeedbackModel(Base):
+    __tablename__ = "model_feedback"
+    id = Column(Integer, primary_key=True)
+    model_id = Column(String, index=True)
+    success = Column(Boolean)
+    latency = Column(Integer)  # milliseconds
+    tokens_used = Column(Integer)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    access_token_encrypted = Column(String, nullable=True)

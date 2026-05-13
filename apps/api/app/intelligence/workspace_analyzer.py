@@ -27,8 +27,40 @@ class WorkspaceAnalyzer:
             "file_structure": self.analyze_file_structure(),
             "architecture": self.detect_architecture(),
             "config_files": self.find_config_files(),
+            "omnicode_config": self._read_omnicode_config(),
         }
         return self.results
+
+    def _read_omnicode_config(self) -> Dict:
+        """Read .omnicode configuration file (JSON or YAML)."""
+        config = {}
+        
+        # Try JSON
+        if self._has_file('.omnicode'):
+            try:
+                config = self._read_json('.omnicode')
+                if config:
+                    return config
+            except:
+                pass
+        
+        # Try YAML
+        if self._has_file('.omnicode.yaml') or self._has_file('.omnicode.yml'):
+            try:
+                import yaml
+                path = self.workspace_path / '.omnicode.yaml'
+                if not path.exists():
+                    path = self.workspace_path / '.omnicode.yml'
+                
+                if path.exists():
+                    with open(path) as f:
+                        config = yaml.safe_load(f) or {}
+                        if config:
+                            return config
+            except:
+                pass
+                
+        return config
 
     def detect_tech_stack(self) -> Dict[str, List[str]]:
         """Detect the technology stack based on file patterns."""
@@ -212,7 +244,7 @@ class WorkspaceAnalyzer:
             'tsconfig.json', '.eslintrc', '.prettierrc',
             'jest.config.js', 'vitest.config.ts', 'pytest.ini',
             'next.config.js', 'vite.config.ts',
-            '.gitignore', '.dockerignore',
+            '.gitignore', '.dockerignore', '.omnicode', '.omnicode.yaml', '.omnicode.yml'
         ]
         
         configs = []

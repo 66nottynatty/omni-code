@@ -8,7 +8,9 @@ from .agents.backend_agent import BackendAgent
 from .agents.frontend_agent import FrontendAgent
 from .agents.security_agent import SecurityAgent
 from .agents.devops_agent import DevOpsAgent
+from .agents.qa_agent import QAAgent
 from ..schemas.orchestrator import TaskGraph, SubTask, TaskStatus
+from ..intelligence.workspace_analyzer import analyze_workspace
 from ..database.models import TaskGraphModel, SubTaskModel, TaskCheckpointModel, AgentSessionModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
@@ -81,7 +83,7 @@ class OrchestratorEngine:
         }
         
         # Decompose goal into task graph
-        graph = await self.decomposer.decompose(prompt, context)
+        graph = await self.decomposer.decompose(prompt, context, db=self.db)
         
         # Save graph to DB
         await self.save_graph_to_db(graph, workspace_id)
@@ -223,14 +225,28 @@ class OrchestratorEngine:
             context.update(context_overrides)
         
         agent = self.get_agent(task.agent_type, task.id, self.mcp_manager, self.redis_client)
+        start_time = datetime.utcnow()
         
         try:
             result = await agent.run(task, context)
             task.output_data = result
             task.status = TaskStatus.COMPLETED
             
-            estimated_tokens = result.get("tokens_used", 1000)
-            self.token_budget.allocate(estimated_tokens)
+            end_time = datetime.utcnow()
+            latency = (end_time - start_time).total_seconds()
+            tokens_used = result.get("tokens_used", 1000)
+            
+            # Log feedback for model router
+            if task.model_id:
+                await self.model_router.log_feedback(
+                    model_id=task.model_id,
+                    success=True,
+                    latency=latency,
+                    tokens_used=tokens_used,
+                    db=self.db
+                )
+            
+            self.token_budget.allocate(tokens_used)
             
             await self.update_subtask_status(
                 task.id,
@@ -241,6 +257,19 @@ class OrchestratorEngine:
             await self._publish_task_update(graph.id, task, "completed")
             
         except Exception as e:
+            end_time = datetime.utcnow()
+            latency = (end_time - start_time).total_seconds()
+            
+            # Log failure feedback
+            if task.model_id:
+                await self.model_router.log_feedback(
+                    model_id=task.model_id,
+                    success=False,
+                    latency=latency,
+                    tokens_used=0,
+                    db=self.db
+                )
+
             task.retry_count += 1
             logger.error("subtask_failed", task_id=task.id, error=str(e))
             
@@ -259,12 +288,19 @@ class OrchestratorEngine:
                 if t.id == dep_id and t.output_data:
                     dependency_outputs[dep_id] = t.output_data
         
+        workspace_path = "/workspace" # In a real system, this would be retrieved from the workspace record
+        analysis = analyze_workspace(workspace_path)
+        
         context = {
             "workspace_id": getattr(graph, 'workspace_id', None),
+            "workspace_path": workspace_path,
             "graph_id": graph.id,
             "graph_goal": graph.goal,
             "dependency_outputs": dependency_outputs,
-            "token_budget_remaining": self.token_budget.remaining
+            "token_budget_remaining": self.token_budget.remaining,
+            "tech_stack": analysis.get("tech_stack"),
+            "omnicode_config": analysis.get("omnicode_config", {}),
+            "coding_guidelines": analysis.get("omnicode_config", {}).get("coding_guidelines", "")
         }
         return context
 
@@ -337,7 +373,13 @@ class OrchestratorEngine:
             logger.warning("redis_publish_failed", error=str(e))
 
     def get_agent(self, agent_type: str, task_id: str, mcp_manager=None, redis_client=None) -> BaseAgent:
-        agent_map = {"backend": BackendAgent, "frontend": FrontendAgent, "security": SecurityAgent, "devops": DevOpsAgent}
+        agent_map = {
+            "backend": BackendAgent,
+            "frontend": FrontendAgent,
+            "security": SecurityAgent,
+            "devops": DevOpsAgent,
+            "qa": QAAgent
+        }
         agent_class = agent_map.get(agent_type, BackendAgent)
         return agent_class(agent_id=task_id, mcp_manager=mcp_manager, redis_client=redis_client)
 
