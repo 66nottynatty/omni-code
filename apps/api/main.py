@@ -53,6 +53,7 @@ from app.database.models import (
 from app.tasks import run_agent_task
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from app.routers import tasks, skills, threads, changes, workspaces, rollback
 
 # Initialize structlog
 structlog.configure(
@@ -97,11 +98,31 @@ async def lifespan(app: FastAPI):
     
     # Recover any interrupted task graphs
     asyncio.create_task(recover_interrupted_tasks())
+
+    # Register MCP servers
+    from app.orchestrator.mcp_manager import MCPManager
+    mcp = MCPManager()
+    try:
+        await mcp.register_server("filesystem", {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"]
+        })
+        await mcp.register_server("shell", {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-shell"]
+        })
+        app.state.mcp = mcp
+        logger.info("mcp_servers_ready", tools=mcp.list_tools())
+    except Exception as e:
+        logger.warning("mcp_startup_failed", error=str(e))
+        app.state.mcp = None
     
     yield
     
     # Cleanup
     scheduler_manager.stop()
+    if app.state.mcp:
+        await app.state.mcp.close_all()
 
 app = FastAPI(
     title="OmniCode API",
@@ -121,6 +142,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include specialized routers
+app.include_router(tasks.router, prefix="/api")
+app.include_router(skills.router, prefix="/api")
+app.include_router(threads.router, prefix="/api")
+app.include_router(changes.router, prefix="/api")
+app.include_router(workspaces.router, prefix="/api")
+app.include_router(rollback.router, prefix="/api")
 
 # ============================================================================
 # Helper Functions
@@ -155,8 +183,8 @@ async def recover_interrupted_tasks():
         from app.orchestrator.engine import OrchestratorEngine
         
         async with AsyncSessionLocal() as db:
-            engine = OrchestratorEngine(db_session=db, redis_client=app.state.redis)
-            await engine.recover_running_graphs()
+            engine_inst = OrchestratorEngine(db_session=db, redis_client=app.state.redis)
+            await engine_inst.recover_running_graphs()
         
         logger.info("task_recovery_complete")
     except Exception as e:
@@ -344,12 +372,6 @@ async def index_repository(
 ):
     """
     Start repository indexing job.
-    
-    The indexer will:
-    1. Fetch all code files from GitHub
-    2. Chunk files using AST-aware parsing
-    3. Generate embeddings
-    4. Store in pgvector for similarity search
     """
     token = get_user_github_token(user_id, db)
     
@@ -373,8 +395,6 @@ async def index_repository(
     # Start indexing job
     from app.intelligence.indexer import CodebaseIndexer
     from app.core.scheduler import scheduler
-    
-    indexer = CodebaseIndexer(db, token)
     
     # Add background job
     job_id = f"index_{workspace.id}_{datetime.utcnow().timestamp()}"
@@ -458,6 +478,7 @@ async def search_code(
     if not workspace:
         raise HTTPException(status_code=404, detail="Repository not indexed")
     
+    from app.intelligence.indexer import CodebaseIndexer
     indexer = CodebaseIndexer(db)
     results = await indexer.search_similar(workspace.id, query, limit)
     
@@ -472,12 +493,6 @@ async def search_code(
 async def decompose_task(data: dict):
     """
     Decompose a goal into a task graph using DeepSeek-Reasoner.
-    
-    This endpoint uses multi-step reasoning to:
-    1. Analyze the goal
-    2. Identify required tasks
-    3. Build dependency graph
-    4. Assign agent types
     """
     from app.orchestrator.decomposer import TaskDecomposer
     
@@ -569,9 +584,6 @@ class TerminalSession:
                 if data.get("type") == "resize":
                     cols = data.get("cols", 80)
                     rows = data.get("rows", 24)
-                    # Send resize to bash
-                    # This is a simplified version - full implementation
-                    # would use a PTY library like ptyprocess
                     logger.debug("terminal_resize", cols=cols, rows=rows)
                     
             except json.JSONDecodeError:
@@ -613,12 +625,6 @@ terminal_sessions: dict[str, TerminalSession] = {}
 async def terminal_ws(websocket: WebSocket, session_id: str):
     """
     Bi-directional WebSocket terminal handler.
-    
-    Supports:
-    - Command input
-    - Output streaming
-    - Resize events
-    - Session management
     """
     await websocket.accept()
     
@@ -683,11 +689,6 @@ async def stream_activity(
 ) -> StreamingResponse:
     """
     Server-Sent Events stream for real-time activity updates.
-    
-    Streams:
-    - Task status updates
-    - Agent logs
-    - Graph completion events
     """
     async def event_generator() -> AsyncGenerator[str, None]:
         redis_client = app.state.redis
@@ -868,8 +869,6 @@ async def list_graphs(
 async def run_orchestrator(data: dict):
     """
     Run the orchestrator with a user prompt.
-    
-    Creates a task graph and starts execution in background.
     """
     from app.orchestrator.engine import OrchestratorEngine
     
@@ -881,12 +880,12 @@ async def run_orchestrator(data: dict):
     
     async with AsyncSessionLocal() as db:
         try:
-            engine = OrchestratorEngine(
+            engine_inst = OrchestratorEngine(
                 db_session=db,
                 redis_client=app.state.redis
             )
             
-            graph = await engine.execute_workflow(
+            graph = await engine_inst.execute_workflow(
                 prompt=prompt,
                 workspace_id=workspace_id,
                 prefer_local=data.get("prefer_local", False)
@@ -942,8 +941,9 @@ async def health():
     
     # Check database
     try:
-        engine.execute(text("SELECT 1"))
-        db_ok = True
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            db_ok = True
     except Exception:
         pass
     
@@ -981,27 +981,6 @@ async def get_models():
             "provider": "DeepSeek",
             "context_window": "128k",
             "cost_tier": "standard"
-        },
-        {
-            "id": "gpt-4-turbo",
-            "name": "GPT-4 Turbo",
-            "provider": "OpenAI",
-            "context_window": "128k",
-            "cost_tier": "pro"
-        },
-        {
-            "id": "gpt-3.5-turbo",
-            "name": "GPT-3.5 Turbo",
-            "provider": "OpenAI",
-            "context_window": "16k",
-            "cost_tier": "standard"
-        },
-        {
-            "id": "claude-3-5-sonnet",
-            "name": "Claude 3.5 Sonnet",
-            "provider": "Anthropic",
-            "context_window": "200k",
-            "cost_tier": "pro"
         }
     ]
 
