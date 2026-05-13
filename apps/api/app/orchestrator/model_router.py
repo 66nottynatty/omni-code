@@ -28,6 +28,22 @@ class ModelRouter:
     def __init__(self):
         self.models = [
             ModelInfo(
+                id="deepseek-reasoner",
+                provider="deepseek",
+                reasoning_score=0.98,
+                cost_per_1k_tokens=0.002,
+                speed_score=0.6,
+                context_window=64000
+            ),
+            ModelInfo(
+                id="deepseek-chat",
+                provider="deepseek",
+                reasoning_score=0.9,
+                cost_per_1k_tokens=0.0002,
+                speed_score=0.9,
+                context_window=128000
+            ),
+            ModelInfo(
                 id="gpt-4o",
                 provider="openai",
                 reasoning_score=0.95,
