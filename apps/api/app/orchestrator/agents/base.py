@@ -49,32 +49,8 @@ class BaseAgent(abc.ABC):
             observation = await self.act(task, context, thought)
             await self.publish_log(task.id, f"⚙️ {observation}", log_type="action")
 
-            # Self-correction loop
-            workspace_path = context.get("workspace_path", "/workspace")
-            for attempt in range(self.max_correction_attempts):
-                test_result = await self.test_runner.run(workspace_path)
-
-                if test_result.get("skipped") or test_result["passed"]:
-                    if not test_result.get("skipped"):
-                        await self.publish_log(task.id, f"✅ Tests passed: {test_result['summary']}", log_type="info")
-                    break
-
-                await self.publish_log(
-                    task.id,
-                    f"⚠️ Tests failed (attempt {attempt + 1}/{self.max_correction_attempts}): {test_result['summary']}",
-                    log_type="warning"
-                )
-
-                if attempt < self.max_correction_attempts - 1:
-                    correction_context = (
-                        f"Your previous implementation caused test failures.\n"
-                        f"Command: {test_result.get('command', '')}\n"
-                        f"Errors:\n{test_result['errors'][:2000]}\n"
-                        f"Output:\n{test_result['output'][:1000]}\n\n"
-                        f"Identify the root cause and fix the issue."
-                    )
-                    observation = await self.act(task, context, correction_context)
-                    await self.publish_log(task.id, f"🔄 Corrective Action: {observation}", log_type="action")
+            # 3. Validation & Correction phase
+            observation = await self.validate_and_correct(task, context, observation)
 
             # 4. Conclusion phase
             result = await self.conclude(task, context, observation)
@@ -87,6 +63,37 @@ class BaseAgent(abc.ABC):
             logger.error("agent_run_failed", agent=self.name, task_id=task.id, error=str(e))
             await self.publish_log(task.id, f"❌ Error: {str(e)}", log_type="error")
             raise
+
+    async def validate_and_correct(self, task: SubTask, context: Dict[str, Any], observation: str) -> str:
+        """
+        Validate the action results and attempt corrections if needed.
+        """
+        workspace_path = context.get("workspace_path", "/workspace")
+        for attempt in range(self.max_correction_attempts):
+            test_result = await self.test_runner.run(workspace_path)
+
+            if test_result.get("skipped") or test_result["passed"]:
+                if not test_result.get("skipped"):
+                    await self.publish_log(task.id, f"✅ Tests passed: {test_result['summary']}", log_type="info")
+                break
+
+            await self.publish_log(
+                task.id,
+                f"⚠️ Tests failed (attempt {attempt + 1}/{self.max_correction_attempts}): {test_result['summary']}",
+                log_type="warning"
+            )
+
+            if attempt < self.max_correction_attempts - 1:
+                correction_context = (
+                    f"Your previous implementation caused test failures.\n"
+                    f"Command: {test_result.get('command', '')}\n"
+                    f"Errors:\n{test_result['errors'][:2000]}\n"
+                    f"Output:\n{test_result['output'][:1000]}\n\n"
+                    f"Identify the root cause and fix the issue."
+                )
+                observation = await self.act(task, context, correction_context)
+                await self.publish_log(task.id, f"🔄 Corrective Action: {observation}", log_type="action")
+        return observation
 
     @abc.abstractmethod
     async def think(self, task: SubTask, context: Dict[str, Any]) -> str:

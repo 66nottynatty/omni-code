@@ -71,6 +71,20 @@ async def get_models():
             "cost_tier": "pro"
         },
         {
+            "id": "gpt-4-turbo",
+            "name": "GPT-4 Turbo",
+            "provider": "OpenAI",
+            "context_window": "128k",
+            "cost_tier": "pro"
+        },
+        {
+            "id": "gpt-3.5-turbo",
+            "name": "GPT-3.5 Turbo",
+            "provider": "OpenAI",
+            "context_window": "16k",
+            "cost_tier": "standard"
+        },
+        {
             "id": "claude-3-5-sonnet-20240620",
             "name": "Claude 3.5 Sonnet",
             "provider": "Anthropic",
