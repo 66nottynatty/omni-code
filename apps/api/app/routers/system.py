@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import text
 import time
-from app.database.session import engine
 from app.schemas import HealthResponse
 
 router = APIRouter(tags=["system"])
@@ -17,11 +16,13 @@ async def health(request: Request):
     # Check database
     start_time = time.time()
     try:
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
+        from app.database.session import AsyncSessionLocal
+        async with AsyncSessionLocal() as session:
+            await session.execute(text("SELECT 1"))
             db_ok = True
             db_latency = (time.time() - start_time) * 1000
-    except Exception:
+    except Exception as e:
+        logger.warning("health_db_check_failed", error=str(e))
         pass
     
     # Check Redis
@@ -83,7 +84,7 @@ async def get_info():
     """Get API information."""
     return {
         "name": "OmniCode API",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "description": "AI-powered code analysis and automation platform",
         "endpoints": {
             "repos": "/api/repos/{owner}/{repo}",

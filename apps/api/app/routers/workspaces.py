@@ -35,8 +35,9 @@ async def get_workspace_config(workspace_id: int, db: AsyncSession = Depends(get
     
     # In a real system, we'd have the path where the repo is cloned
     repo_path = f"/workspace/{workspace.owner}/{workspace.repo}"
+    # Fallback to current project directory for development
     if not os.path.exists(repo_path):
-         repo_path = f"/home/engine/project" # Fallback for this environment
+         repo_path = "/home/engine/project"
          
     return get_project_config(repo_path)
 
@@ -59,4 +60,21 @@ async def analyze_workspace(workspace_id: int, db: AsyncSession = Depends(get_as
 
 @router.post("/{workspace_id}/generate-skill")
 async def generate_skill(workspace_id: int, db: AsyncSession = Depends(get_async_db)):
-    return {"status": "success", "message": "Skill generation started"}
+    from app.database.models import BackgroundTask
+    
+    # Create a background task for skill generation
+    task = BackgroundTask(
+        workspace_id=workspace_id,
+        task_type="skill_generation",
+        status="pending",
+        payload={"workspace_id": workspace_id}
+    )
+    db.add(task)
+    await db.commit()
+    await db.refresh(task)
+    
+    return {
+        "status": "success", 
+        "message": "Skill generation task created",
+        "task_id": task.id
+    }

@@ -344,3 +344,14 @@ class ModelFeedbackModel(Base):
     tokens_used = Column(Integer)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     access_token_encrypted = Column(String, nullable=True)
+
+
+class PreviewSession(Base):
+    __tablename__ = "preview_sessions"
+    id = Column(Integer, primary_key=True)
+    workspace_id = Column(Integer, ForeignKey("workspaces.id"), index=True)
+    port = Column(Integer)
+    url = Column(String)
+    status = Column(String)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)

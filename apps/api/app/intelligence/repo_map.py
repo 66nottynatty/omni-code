@@ -104,7 +104,7 @@ class RepoMap:
                 continue
             try:
                 src = full.read_text(errors="ignore")
-                local = re.findall(r\"\"\"(?:import|from)\s+['\"](\.[^'\"]+)['\"]\"\"\", src)
+                local = re.findall(r"(?:import|from)\s+['\"](\.[^'\"]+)['\"]", src)
                 if local:
                     lines.append(f"  {fp} → {', '.join(local[:4])}")
             except Exception:

@@ -97,18 +97,26 @@ async def decompose_task(data: dict, db: AsyncSession = Depends(get_async_db)):
 @router.post("/decompose/analyze")
 async def analyze_complexity(data: dict):
     """Quick complexity analysis for a goal."""
-    decomposer = TaskDecomposer()
-    goal = data.get("goal")
-    
+    goal = data.get("goal", "")
     if not goal:
         raise HTTPException(status_code=400, detail="Goal is required")
     
-    # Analyze complexity is not implemented in TaskDecomposer in the file I saw,
-    # but I'll add a mock or placeholder if it's missing.
-    # For now, I'll check TaskDecomposer again.
-    if hasattr(decomposer, 'analyze_complexity'):
-        return await decomposer.analyze_complexity(goal)
-    return {"complexity": 0.5, "estimated_tasks": 3}
+    # Heuristic-based complexity analysis
+    words = goal.lower().split()
+    word_count = len(words)
+    
+    # Keywords that suggest high complexity
+    complex_keywords = ["refactor", "migrate", "security", "optimization", "architecture", "integration"]
+    complex_count = sum(1 for word in words if word in complex_keywords)
+    
+    complexity = min(1.0, (word_count / 50.0) + (complex_count * 0.1))
+    estimated_tasks = max(1, int(complexity * 10))
+    
+    return {
+        "complexity": round(complexity, 2),
+        "estimated_tasks": estimated_tasks,
+        "confidence": 0.8
+    }
 
 
 @router.post("/{graph_id}/inject")

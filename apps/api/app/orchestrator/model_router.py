@@ -136,24 +136,44 @@ class ModelRouter:
         return max(available_models, key=get_adjusted_score)
 
     async def _get_performance_scores(self, db: AsyncSession) -> Dict[str, Dict[str, float]]:
-        """Fetch recent model performance from DB."""
+        """Fetch recent model performance from DB and apply EMA scoring."""
         try:
-            # Last 100 entries
+            # Last 7 days of performance data
             since = datetime.datetime.utcnow() - datetime.timedelta(days=7)
             query = (
-                select(
-                    ModelFeedbackModel.model_id,
-                    func.avg(ModelFeedbackModel.success.cast(func.Integer)).label("success_rate"),
-                    func.avg(ModelFeedbackModel.latency).label("avg_latency")
-                )
+                select(ModelFeedbackModel)
                 .where(ModelFeedbackModel.created_at > since)
-                .group_by(ModelFeedbackModel.model_id)
+                .order_by(ModelFeedbackModel.model_id, ModelFeedbackModel.created_at.asc())
             )
             result = await db.execute(query)
-            return {
-                row.model_id: {"success_rate": float(row.success_rate), "avg_latency": float(row.avg_latency)}
-                for row in result.all()
-            }
+            feedbacks = result.scalars().all()
+            
+            # Group by model_id
+            model_data = {}
+            for f in feedbacks:
+                if f.model_id not in model_data:
+                    model_data[f.model_id] = []
+                model_data[f.model_id].append(f)
+            
+            # Calculate EMA for each model
+            scores = {}
+            alpha = 0.3 # Smoothing factor for EMA
+            
+            for model_id, f_list in model_data.items():
+                # Success rate EMA
+                ema_success = float(f_list[0].success)
+                ema_latency = float(f_list[0].latency)
+                
+                for f in f_list[1:]:
+                    ema_success = alpha * float(f.success) + (1 - alpha) * ema_success
+                    ema_latency = alpha * float(f.latency) + (1 - alpha) * ema_latency
+                
+                scores[model_id] = {
+                    "success_rate": ema_success,
+                    "avg_latency": ema_latency
+                }
+            
+            return scores
         except Exception as e:
             logger.warning("failed_to_fetch_performance_scores", error=str(e))
             return {}

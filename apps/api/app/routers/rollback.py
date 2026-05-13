@@ -18,11 +18,23 @@ async def rollback_action(action_id: int, db: AsyncSession = Depends(get_async_d
     if action.action_type != "file_edit":
          raise HTTPException(status_code=400, detail="Only file_edit actions can be rolled back")
 
-    # In a real system, we would apply the content_before back to the file
-    # For now, we'll just simulate it and mark it as rolled back if we had a status field
-    
-    return {
-        "status": "success", 
-        "reverted_file": action.file_path,
-        "action_id": action_id
-    }
+    if not action.content_before:
+         raise HTTPException(status_code=400, detail="No 'content_before' found for this action")
+
+    # Apply the content_before back to the file
+    try:
+        # In this environment, we might need to resolve the path
+        repo_path = "/home/engine/project" # Fallback/Default for this environment
+        full_path = os.path.join(repo_path, action.file_path.lstrip("/"))
+        
+        with open(full_path, "w") as f:
+            f.write(action.content_before)
+            
+        return {
+            "status": "success", 
+            "reverted_file": action.file_path,
+            "action_id": action_id,
+            "message": f"Successfully rolled back to previous state."
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to rollback file: {str(e)}")

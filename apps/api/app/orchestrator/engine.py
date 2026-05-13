@@ -228,6 +228,13 @@ class OrchestratorEngine:
         start_time = datetime.utcnow()
         
         try:
+            # Simulate token streaming if it's a long task
+            if task.agent_type in ["backend", "frontend"]:
+                stream_message = f"Starting {task.agent_type} implementation for {task.title}..."
+                for word in stream_message.split():
+                    await agent.publish_token(task.id, word + " ")
+                    await asyncio.sleep(0.05)
+            
             result = await agent.run(task, context)
             task.output_data = result
             task.status = TaskStatus.COMPLETED
