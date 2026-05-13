@@ -125,3 +125,15 @@ export function streamGraphLogs(graphId: string, onLog: (log: any) => void) {
 }
 
 export default client;
+
+export async function pauseOrchestrator(graphId: string) {
+  return fetch(`${baseUrl}/api/orchestrator/${graphId}/pause`, { method: 'POST' })
+}
+
+export async function resumeOrchestrator(graphId: string) {
+  return fetch(`${baseUrl}/api/orchestrator/${graphId}/resume`, { method: 'POST' })
+}
+
+export async function cancelOrchestrator(graphId: string) {
+  return fetch(`${baseUrl}/api/orchestrator/${graphId}/cancel`, { method: 'POST' })
+}

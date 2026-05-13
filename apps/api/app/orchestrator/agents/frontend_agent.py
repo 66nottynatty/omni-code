@@ -43,7 +43,8 @@ class FrontendAgent(BaseAgent):
         component_type = self._determine_component_type(task)
         await self.publish_log(task.id, f"Component type: {component_type}")
 
-        return (
+        repo_map_info = f"## Repository Structure\n{context.get('repo_map', '')}\n\n"
+        return repo_map_info + (
             f"Frontend implementation for: {task.title}\n"
             f"Framework: {self.framework}\n"
             f"Component: {component_type}\n"

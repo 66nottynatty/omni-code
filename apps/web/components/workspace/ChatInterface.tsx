@@ -1,12 +1,12 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from "react"
-import { Send, Sparkles, User, Bot, Loader2, StopCircle } from "lucide-react"
+import { Send, Sparkles, User, Bot, Loader2, StopCircle, Pause, Play } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { runOrchestrator, streamGraphLogs, getGraph } from "@/lib/api"
+import { runOrchestrator, streamGraphLogs, getGraph, pauseOrchestrator, resumeOrchestrator, cancelOrchestrator } from "@/lib/api"
 
 interface Message {
   id: string
@@ -33,6 +33,7 @@ export function ChatInterface({ workspaceId = 1 }: ChatInterfaceProps) {
   ])
   const [input, setInput] = useState("")
   const [isRunning, setIsRunning] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
   const [currentGraphId, setCurrentGraphId] = useState<string | null>(null)
   const stopRef = useRef<(() => void) | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -64,38 +65,31 @@ export function ChatInterface({ workspaceId = 1 }: ChatInterfaceProps) {
     setMessages(prev => [...prev, userMsg, assistantMsg])
     setInput("")
     setIsRunning(true)
+    setIsPaused(false)
 
     try {
-      // Start the orchestrator
       const { graph_id } = await runOrchestrator(input, workspaceId)
       setCurrentGraphId(graph_id)
 
-      // Stream real-time logs into the assistant message bubble
       const stop = streamGraphLogs(graph_id, (event) => {
         if (event.type === "token") {
           setMessages(prev => prev.map(m =>
-            m.id === assistantMsgId
-              ? { ...m, content: m.content + event.content }
-              : m
+            m.id === assistantMsgId ? { ...m, content: m.content + event.content } : m
           ))
         }
 
         if (event.type === "task_update") {
           setMessages(prev => prev.map(m =>
-            m.id === assistantMsgId
-              ? {
-                  ...m,
-                  content: m.content + `\n\n✅ **${event.task?.title}** — ${event.status}`
-                }
-              : m
+            m.id === assistantMsgId ? { ...m, content: m.content + `\n\n✅ **${event.task?.title}** — ${event.status}` } : m
           ))
         }
 
+        if (event.status === "paused") setIsPaused(true)
+        if (event.status === "resumed") setIsPaused(false)
+
         if (event.type === "graph_update" && event.status === "completed") {
           setMessages(prev => prev.map(m =>
-            m.id === assistantMsgId
-              ? { ...m, status: "done", graphId: graph_id }
-              : m
+            m.id === assistantMsgId ? { ...m, status: "done", graphId: graph_id } : m
           ))
           setIsRunning(false)
           setCurrentGraphId(null)
@@ -104,9 +98,7 @@ export function ChatInterface({ workspaceId = 1 }: ChatInterfaceProps) {
 
         if (event.type === "graph_update" && event.status === "failed") {
           setMessages(prev => prev.map(m =>
-            m.id === assistantMsgId
-              ? { ...m, content: m.content + "\n\n❌ Task failed.", status: "error" }
-              : m
+            m.id === assistantMsgId ? { ...m, content: m.content + "\n\n❌ Task failed.", status: "error" } : m
           ))
           setIsRunning(false)
           stop()
@@ -116,68 +108,71 @@ export function ChatInterface({ workspaceId = 1 }: ChatInterfaceProps) {
       stopRef.current = stop
     } catch (err: any) {
       setMessages(prev => prev.map(m =>
-        m.id === assistantMsgId
-          ? { ...m, content: `Error: ${err.message}`, status: "error" }
-          : m
+        m.id === assistantMsgId ? { ...m, content: `Error: ${err.message}`, status: "error" } : m
       ))
       setIsRunning(false)
     }
   }
 
   const handleStop = () => {
+    if (currentGraphId) {
+      fetch(`/api/orchestrator/${currentGraphId}/cancel`, { method: 'POST' })
+    }
     stopRef.current?.()
     setIsRunning(false)
     setCurrentGraphId(null)
   }
 
+  const handlePauseResume = async () => {
+    if (!currentGraphId) return
+    if (isPaused) {
+      await resumeOrchestrator(currentGraphId)
+      setIsPaused(false)
+    } else {
+      await pauseOrchestrator(currentGraphId)
+      setIsPaused(true)
+    }
+  }
+
   return (
     <div className="flex flex-col h-full bg-[#09090b] border-l border-border">
-      {/* Header */}
       <div className="h-12 px-4 flex items-center justify-between border-b border-border shrink-0">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-primary" />
           <span className="text-sm font-semibold">Agent Chat</span>
         </div>
-        <Badge variant="outline" className={cn(
-          "h-5 text-[10px] gap-1.5 border-border bg-[#18181b]",
-          isRunning && "border-yellow-500/30"
-        )}>
-          <div className={cn(
-            "w-1.5 h-1.5 rounded-full",
-            isRunning ? "bg-yellow-400 animate-pulse" : "bg-green-500"
-          )} />
-          {isRunning ? "Running" : "Ready"}
-        </Badge>
+        <div className="flex items-center gap-2">
+          {isRunning && currentGraphId && (
+            <div className="flex gap-1 mr-2">
+              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handlePauseResume}>
+                {isPaused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+              </Button>
+            </div>
+          )}
+          <Badge variant="outline" className={cn(
+            "h-5 text-[10px] gap-1.5 border-border bg-[#18181b]",
+            isRunning && "border-yellow-500/30"
+          )}>
+            <div className={cn(
+              "w-1.5 h-1.5 rounded-full",
+              isRunning ? (isPaused ? "bg-yellow-600" : "bg-yellow-400 animate-pulse") : "bg-green-500"
+            )} />
+            {isRunning ? (isPaused ? "Paused" : "Running") : "Ready"}
+          </Badge>
+        </div>
       </div>
 
-      {/* Messages */}
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
           {messages.map((msg) => (
-            <div key={msg.id} className={cn(
-              "flex gap-3",
-              msg.role === "user" ? "flex-row-reverse" : "flex-row"
-            )}>
-              <div className={cn(
-                "w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5",
-                msg.role === "user" ? "bg-primary" : "bg-[#18181b] border border-border"
-              )}>
-                {msg.role === "user"
-                  ? <User className="w-3.5 h-3.5 text-primary-foreground" />
-                  : <Bot className="w-3.5 h-3.5 text-muted-foreground" />
-                }
+            <div key={msg.id} className={cn("flex gap-3", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
+              <div className={cn("w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5", msg.role === "user" ? "bg-primary" : "bg-[#18181b] border border-border")}>
+                {msg.role === "user" ? <User className="w-3.5 h-3.5 text-primary-foreground" /> : <Bot className="w-3.5 h-3.5 text-muted-foreground" />}
               </div>
-              <div className={cn(
-                "max-w-[80%] rounded-xl px-4 py-2.5 text-sm",
-                msg.role === "user"
-                  ? "bg-primary text-primary-foreground rounded-tr-sm"
-                  : "bg-[#18181b] border border-border rounded-tl-sm"
-              )}>
+              <div className={cn("max-w-[80%] rounded-xl px-4 py-2.5 text-sm", msg.role === "user" ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-[#18181b] border border-border rounded-tl-sm")}>
                 <p className="whitespace-pre-wrap leading-relaxed">
                   {msg.content}
-                  {msg.status === "streaming" && (
-                    <span className="inline-block w-1.5 h-3.5 ml-0.5 bg-current animate-pulse rounded-sm" />
-                  )}
+                  {msg.status === "streaming" && !isPaused && <span className="inline-block w-1.5 h-3.5 ml-0.5 bg-current animate-pulse rounded-sm" />}
                 </p>
                 <p className="text-[10px] mt-1 opacity-40">{msg.timestamp}</p>
               </div>
@@ -187,18 +182,12 @@ export function ChatInterface({ workspaceId = 1 }: ChatInterfaceProps) {
         </div>
       </ScrollArea>
 
-      {/* Input */}
       <div className="p-4 border-t border-border shrink-0">
         <div className="flex gap-2">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault()
-                handleSend()
-              }
-            }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend() } }}
             placeholder="Describe what to build..."
             rows={1}
             disabled={isRunning}
@@ -214,9 +203,7 @@ export function ChatInterface({ workspaceId = 1 }: ChatInterfaceProps) {
             </Button>
           )}
         </div>
-        <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
-          Enter to send · Shift+Enter for new line
-        </p>
+        <p className="text-[10px] text-muted-foreground mt-1.5 text-center">Enter to send · Shift+Enter for new line</p>
       </div>
     </div>
   )

@@ -38,7 +38,8 @@ class BackendAgent(BaseAgent):
             skill_content = read_skill(skill_name)
             await self.publish_log(task.id, f"Loaded skill: {skill_name}")
 
-        return (
+        repo_map_info = f"## Repository Structure\n{context.get('repo_map', '')}\n\n"
+        return repo_map_info + (
             f"Backend implementation for: {task.title}\n"
             f"Tech stack: {self.tech_stack}\n"
             f"Description: {task.description}"

@@ -52,7 +52,8 @@ class SecurityAgent(BaseAgent):
             ],
         }
 
-        return (
+        repo_map_info = f"## Repository Structure\n{context.get('repo_map', '')}\n\n"
+        return repo_map_info + (
             f"Security audit for: {task.title}\n"
             f"Focus areas: {self._identify_security_focus(task.description)}"
         )

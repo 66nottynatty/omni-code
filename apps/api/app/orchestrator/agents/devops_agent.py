@@ -29,7 +29,8 @@ class DevOpsAgent(BaseAgent):
         self.deployment_environments = ["development", "staging", "production"]
         self.required_files = self._identify_required_files(task.description)
 
-        return (
+        repo_map_info = f"## Repository Structure\n{context.get('repo_map', '')}\n\n"
+        return repo_map_info + (
             f"DevOps automation for: {task.title}\n"
             f"Required files: {', '.join(self.required_files)}"
         )
