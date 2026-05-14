@@ -28,11 +28,12 @@ class SubTask(BaseModel):
 
 class TaskGraph(BaseModel):
     id: str
+    workspace_id: int
     goal: str
     subtasks: List[SubTask]
     status: TaskStatus = TaskStatus.PENDING
-    created_at: str
-    updated_at: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
 class OrchestratorRequest(BaseModel):
     prompt: str

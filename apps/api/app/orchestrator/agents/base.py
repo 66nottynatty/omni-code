@@ -45,6 +45,10 @@ class BaseAgent(abc.ABC):
             thought = await self.think(task, context)
             await self.publish_log(task.id, f"🧠 {thought}", log_type="thought")
 
+            # 1b. Planning phase
+            plan = await self.plan(task, context, thought)
+            await self.publish_log(task.id, f"📋 Plan: {plan}", log_type="info")
+
             # 2. Action phase
             observation = await self.act(task, context, thought)
             await self.publish_log(task.id, f"⚙️ {observation}", log_type="action")
@@ -99,6 +103,12 @@ class BaseAgent(abc.ABC):
     async def think(self, task: SubTask, context: Dict[str, Any]) -> str:
         pass
 
+    async def plan(self, task: SubTask, context: Dict[str, Any], thought: str) -> str:
+        """
+        Default planning implementation.
+        """
+        return f"Execute {task.title} based on reasoning."
+
     @abc.abstractmethod
     async def act(self, task: SubTask, context: Dict[str, Any], thought: str) -> str:
         pass
@@ -133,7 +143,7 @@ class BaseAgent(abc.ABC):
         if self.redis_client:
             try:
                 channel = f"agent_logs_{task_id}"
-                self.redis_client.publish(channel, json.dumps(log_data))
+                await self.redis_client.publish(channel, json.dumps(log_data))
             except Exception as e:
                 logger.warning("failed_to_publish_log", task_id=task_id, error=str(e))
 
@@ -142,7 +152,7 @@ class BaseAgent(abc.ABC):
         if self.redis_client:
             try:
                 channel = f"agent_tokens_{task_id}"
-                self.redis_client.publish(channel, json.dumps({
+                await self.redis_client.publish(channel, json.dumps({
                     "task_id": task_id,
                     "token": token,
                     "type": "token",

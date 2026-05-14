@@ -93,6 +93,7 @@ Output valid JSON only with the following structure:
 
         return TaskGraph(
             id=str(uuid.uuid4()),
+            workspace_id=context.get("workspace_id", 0) if context else 0,
             goal=goal,
             subtasks=subtasks,
             status=TaskStatus.PENDING,
@@ -107,4 +108,5 @@ Output valid JSON only with the following structure:
         logger.info("replanning_graph", graph_id=original_graph.id)
         # For now, just redo the decomposition with the failure context
         new_goal = f"Original Goal: {original_graph.goal}\nFailure Context: {json.dumps(failure_context)}"
-        return await self.decompose(new_goal, {}, db=db)
+        context = {"workspace_id": original_graph.workspace_id}
+        return await self.decompose(new_goal, context, db=db)

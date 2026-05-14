@@ -146,19 +146,19 @@ class OrchestratorEngine:
         while not self._is_graph_complete(graph):
             # Check for control signals
             if self.redis_client:
-                signal = self.redis_client.get(f"graph_signal_{graph.id}")
+                signal = await self.redis_client.get(f"graph_signal_{graph.id}")
                 if signal == b"pause":
-                    await self._publish_graph_update(graph.id, "paused", {})
+                    await self._publish_graph_update(graph, "paused", {})
                     while True:
                         await asyncio.sleep(1)
-                        sig = self.redis_client.get(f"graph_signal_{graph.id}")
+                        sig = await self.redis_client.get(f"graph_signal_{graph.id}")
                         if sig != b"pause":
                             break
-                    await self._publish_graph_update(graph.id, "resumed", {})
+                    await self._publish_graph_update(graph, "resumed", {})
                 elif signal == b"cancel":
                     await self.update_graph_status(graph.id, TaskStatus.CANCELLED)
                     graph.status = TaskStatus.CANCELLED
-                    self.redis_client.delete(f"graph_signal_{graph.id}")
+                    await self.redis_client.delete(f"graph_signal_{graph.id}")
                     return
 
             # Find tasks that are ready to run
@@ -261,7 +261,7 @@ class OrchestratorEngine:
                 output_data=result,
                 completed_at=datetime.utcnow()
             )
-            await self._publish_task_update(graph.id, task, "completed")
+            await self._publish_task_update(graph, task, "completed")
             
             # QA auto-injection
             if task.agent_type in ["backend", "frontend"] and not any(t.agent_type == "qa" and task.id in t.dependencies for t in graph.subtasks):
@@ -300,7 +300,7 @@ class OrchestratorEngine:
             else:
                 task.status = TaskStatus.FAILED
                 await self.update_subtask_status(task.id, TaskStatus.FAILED)
-                await self._publish_graph_update(graph.id, "failed", {"error": str(e)})
+                await self._publish_graph_update(graph, "failed", {"error": str(e)})
 
     def _build_agent_context(self, graph: TaskGraph, task: SubTask) -> Dict[str, Any]:
         dependency_outputs = {}
@@ -365,31 +365,35 @@ class OrchestratorEngine:
             if t.id == task_id: return t.status
         return TaskStatus.FAILED
 
-    async def _publish_task_update(self, graph_id: str, task: SubTask, status: str):
+    async def _publish_task_update(self, graph: TaskGraph, task: SubTask, status: str):
         if not self.redis_client: return
         try:
             update_data = {
                 "type": "task_update",
-                "graph_id": graph_id,
+                "graph_id": graph.id,
+                "workspace_id": graph.workspace_id,
                 "task": {"id": task.id, "title": task.title, "status": task.status.value},
                 "status": status,
                 "timestamp": datetime.utcnow().isoformat()
             }
-            self.redis_client.publish(f"graph_updates_{graph_id}", json.dumps(update_data))
+            await self.redis_client.publish(f"graph_updates_{graph.id}", json.dumps(update_data))
+            await self.redis_client.publish(f"workspace_updates_{graph.workspace_id}", json.dumps(update_data))
         except Exception as e:
             logger.warning("redis_publish_failed", error=str(e))
 
-    async def _publish_graph_update(self, graph_id: str, status: str, context: Dict[str, Any]):
+    async def _publish_graph_update(self, graph: TaskGraph, status: str, context: Dict[str, Any]):
         if not self.redis_client: return
         try:
             update_data = {
                 "type": "graph_update",
-                "graph_id": graph_id,
+                "graph_id": graph.id,
+                "workspace_id": graph.workspace_id,
                 "status": status,
                 "context": context,
                 "timestamp": datetime.utcnow().isoformat()
             }
-            self.redis_client.publish(f"graph_updates_{graph_id}", json.dumps(update_data))
+            await self.redis_client.publish(f"graph_updates_{graph.id}", json.dumps(update_data))
+            await self.redis_client.publish(f"workspace_updates_{graph.workspace_id}", json.dumps(update_data))
         except Exception as e:
             logger.warning("redis_publish_failed", error=str(e))
 

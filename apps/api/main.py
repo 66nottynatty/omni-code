@@ -8,7 +8,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from contextlib import asynccontextmanager
-import redis
+import redis.asyncio as redis
 import structlog
 import asyncio
 import os
@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
     # Initialize Redis connection
     try:
         redis_client = redis.from_url(settings.redis_url)
-        redis_client.ping()
+        await redis_client.ping()
         app.state.redis = redis_client
         logger.info("redis_connected")
     except Exception as e:

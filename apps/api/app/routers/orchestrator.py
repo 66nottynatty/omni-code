@@ -154,6 +154,40 @@ async def inject_task_endpoint(
     return {"status": "success", "task_id": new_task.id}
 
 
+@router.post("/{graph_id}/pause")
+async def pause_graph(
+    graph_id: str,
+    request: Request
+):
+    """
+    Pause a running graph.
+    """
+    logger.info("pausing_graph", graph_id=graph_id)
+    
+    redis_client = request.app.state.redis
+    if redis_client:
+        await redis_client.set(f"graph_signal_{graph_id}", "pause")
+    
+    return {"status": "paused"}
+
+
+@router.post("/{graph_id}/resume")
+async def resume_graph(
+    graph_id: str,
+    request: Request
+):
+    """
+    Resume a paused graph.
+    """
+    logger.info("resuming_graph", graph_id=graph_id)
+    
+    redis_client = request.app.state.redis
+    if redis_client:
+        await redis_client.delete(f"graph_signal_{graph_id}")
+    
+    return {"status": "resumed"}
+
+
 @router.post("/{graph_id}/cancel")
 async def cancel_graph(
     graph_id: str,
@@ -166,6 +200,6 @@ async def cancel_graph(
     
     redis_client = request.app.state.redis
     if redis_client:
-        redis_client.set(f"graph_signal_{graph_id}", "cancel")
+        await redis_client.set(f"graph_signal_{graph_id}", "cancel")
     
     return {"status": "cancelled"}

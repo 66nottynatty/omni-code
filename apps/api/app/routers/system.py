@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import text
 import time
+import structlog
 from app.schemas import HealthResponse
 
+logger = structlog.get_logger()
 router = APIRouter(tags=["system"])
 
 @router.get("/health", response_model=HealthResponse)
