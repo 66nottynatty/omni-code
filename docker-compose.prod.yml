@@ -37,12 +37,34 @@ services:
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - JWT_SECRET=${JWT_SECRET}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - WORKSPACE_ROOT=/workspace
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+    volumes:
+      - workspace_data:/workspace
+    networks:
+      - omnicode-network
+
+  browser:
+    image: mcr.microsoft.com/playwright:v1.44.0-jammy
+    command: ["node", "browser-service.js"]
+    environment:
+      - PORT=3001
+    volumes:
+      - ./apps/api/browser-service.js:/app/browser-service.js
+    working_dir: /app
     restart: always
     networks:
       - omnicode-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   worker:
     build:
@@ -58,10 +80,15 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - JWT_SECRET=${JWT_SECRET}
+      - WORKSPACE_ROOT=/workspace
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: always
+    volumes:
+      - workspace_data:/workspace
     networks:
       - omnicode-network
 
@@ -73,6 +100,11 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: always
     networks:
       - omnicode-network
@@ -81,6 +113,11 @@ services:
     image: redis:7-alpine
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: always
     networks:
       - omnicode-network
@@ -92,3 +129,4 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  workspace_data:

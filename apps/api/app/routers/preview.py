@@ -80,6 +80,7 @@ async def capture_preview(data: Dict[str, Any]):
     logger.info("capturing_preview", url=url)
     
     import httpx
+    import base64
     try:
         # Try to call the browser service
         async with httpx.AsyncClient() as client:
@@ -88,7 +89,7 @@ async def capture_preview(data: Dict[str, Any]):
                 # In a real system, we'd save this to S3
                 return {
                     "status": "success",
-                    "screenshot_b64": resp.content.hex(), # Mocking it
+                    "screenshot_b64": base64.b64encode(resp.content).decode('utf-8'),
                     "timestamp": datetime.utcnow().isoformat()
                 }
     except Exception as e:

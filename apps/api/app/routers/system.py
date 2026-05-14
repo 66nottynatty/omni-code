@@ -46,7 +46,7 @@ async def health(request: Request):
         "redis_latency_ms": redis_latency
     }
 
-@router.get("/api/models")
+@router.get("/models")
 async def get_models():
     """Get available AI models."""
     return [
@@ -95,7 +95,7 @@ async def get_models():
         }
     ]
 
-@router.get("/api/info")
+@router.get("/info")
 async def get_info():
     """Get API information."""
     return {
@@ -106,7 +106,7 @@ async def get_info():
             "repos": "/api/repos/{owner}/{repo}",
             "decompose": "/api/orchestrator/decompose",
             "orchestrator": "/api/orchestrator",
-            "terminal": "/ws/terminal/{session_id}",
+            "terminal": "/api/ws/terminal/{session_id}",
             "stream": "/api/stream/{graph_id}"
         }
     }

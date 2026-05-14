@@ -66,6 +66,9 @@ async def lifespan(app: FastAPI):
     scheduler_manager.start()
     app.state.scheduler = scheduler_manager
     
+    # Ensure workspace root exists
+    os.makedirs(settings.workspace_root, exist_ok=True)
+    
     # Recover any interrupted task graphs
     asyncio.create_task(recover_interrupted_tasks(app.state.redis))
 
@@ -75,7 +78,7 @@ async def lifespan(app: FastAPI):
     try:
         await mcp.register_server("filesystem", {
             "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"]
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", settings.workspace_root]
         })
         await mcp.register_server("shell", {
             "command": "npx",
@@ -127,8 +130,8 @@ app.include_router(skills.router, prefix="/api")
 app.include_router(rollback.router, prefix="/api")
 app.include_router(stream.router, prefix="/api")
 app.include_router(preview.router, prefix="/api")
-app.include_router(system.router)
-app.include_router(terminal.router)
+app.include_router(system.router, prefix="/api")
+app.include_router(terminal.router, prefix="/api")
 
 
 async def recover_interrupted_tasks(redis_client):

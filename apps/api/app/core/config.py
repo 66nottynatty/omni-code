@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     environment: str = Field(default="development")
     debug: bool = Field(default=False)
 
+    # Workspace
+    workspace_root: str = Field(default="/workspace")
+
     # NextAuth compatibility
     nextauth_url: str = Field(default="http://localhost:3000")
 
