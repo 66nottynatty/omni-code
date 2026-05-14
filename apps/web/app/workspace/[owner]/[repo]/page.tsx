@@ -21,7 +21,7 @@ import { EditorProvider, useEditor } from "@/context/EditorContext"
 function WorkspaceContent({ params }: { params: { owner: string, repo: string } }) {
   const [activeTab, setActiveTab] = useState("explorer")
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const { editorContent, editorLanguage, setEditorContent } = useEditor()
+  const { editorContent, editorLanguage, setEditorContent, activeFile } = useEditor()
 
   const handleTabChange = (tab: string) => {
     if (activeTab === tab && isSidebarOpen) {
@@ -77,7 +77,7 @@ function WorkspaceContent({ params }: { params: { owner: string, repo: string } 
                 
                 <Panel defaultSize={50} minSize={30}>
                   <div className="h-full flex flex-col">
-                    <EditorTabs />
+                    <EditorTabs activeFile={activeFile} />
                     <div className="flex-1">
                       <Editor
                         height="100%"
