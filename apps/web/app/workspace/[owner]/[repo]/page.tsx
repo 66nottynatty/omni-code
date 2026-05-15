@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels"
 import Editor from "@monaco-editor/react"
 import { TopBar } from "@/components/workspace/TopBar"
@@ -24,6 +24,22 @@ function WorkspaceContent({ params }: { params: { owner: string, repo: string } 
   const { editorContent, editorLanguage, setEditorContent, activeFile } = useEditor()
 
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
+  
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setCommandPaletteOpen(true)
+      }
+      if (e.key === 'Escape') {
+        setCommandPaletteOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   const handleSendMessage = async (goal: string): Promise<any> => { console.log("goal:", goal) }
   const handleTabChange = (tab: string) => {
     if (activeTab === tab && isSidebarOpen) {
@@ -46,7 +62,11 @@ function WorkspaceContent({ params }: { params: { owner: string, repo: string } 
 
   return (
     <div className="h-screen w-full flex flex-col bg-[#09090b] text-foreground select-none">
-      <TopBar owner={params.owner} repo={params.repo} />
+      <TopBar 
+        owner={params.owner} 
+        repo={params.repo} 
+        onCommandPalette={() => setCommandPaletteOpen(true)}
+      />
       
       <div className="flex-1 flex overflow-hidden">
         <SidebarRail activeTab={activeTab} setActiveTab={handleTabChange} />
@@ -115,13 +135,15 @@ function WorkspaceContent({ params }: { params: { owner: string, repo: string } 
         </div>
       </div>
       
-      <CommandPalette
-  onClose={() => setCommandPaletteOpen(false)}
-  onDecompose={(goal: string) => {
-    setCommandPaletteOpen(false)
-    handleSendMessage(goal)
-  }}
-/>
+      {commandPaletteOpen && (
+        <CommandPalette
+          onClose={() => setCommandPaletteOpen(false)}
+          onDecompose={(goal: string) => {
+            setCommandPaletteOpen(false)
+            handleSendMessage(goal)
+          }}
+        />
+      )}
     </div>
   )
 }

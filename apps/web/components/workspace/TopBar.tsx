@@ -6,11 +6,20 @@ import {
   Settings, 
   Share2, 
   Github, 
-  Cpu
+  Cpu,
+  Search
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-export function TopBar({ owner, repo }: { owner: string, repo: string }) {
+export function TopBar({ 
+  owner, 
+  repo, 
+  onCommandPalette 
+}: { 
+  owner: string, 
+  repo: string, 
+  onCommandPalette?: () => void 
+}) {
   return (
     <div className="h-12 border-b border-border bg-[#09090b] flex items-center justify-between px-4 shrink-0">
       <div className="flex items-center gap-3">
@@ -23,6 +32,23 @@ export function TopBar({ owner, repo }: { owner: string, repo: string }) {
           <span className="text-foreground font-semibold">{repo}</span>
         </div>
       </div>
+
+      {onCommandPalette && (
+        <div className="hidden md:flex flex-1 max-w-md mx-4">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="w-full h-8 justify-start text-muted-foreground font-normal bg-[#09090b] border-border hover:bg-[#18181b] hover:text-foreground"
+            onClick={onCommandPalette}
+          >
+            <Search className="w-3.5 h-3.5 mr-2" />
+            <span className="flex-1 text-left">Search or type a command...</span>
+            <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted/50 px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+              <span className="text-xs">⌘</span>K
+            </kbd>
+          </Button>
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
