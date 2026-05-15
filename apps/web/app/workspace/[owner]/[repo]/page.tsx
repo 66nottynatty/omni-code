@@ -14,9 +14,14 @@ import {
 import { ChatInterface } from "@/components/workspace/ChatInterface"
 import { EditorTabs } from "@/components/workspace/EditorTabs"
 import { CommandPalette } from "@/components/workspace/CommandPalette"
-import { TerminalPanel } from "@/components/workspace/TerminalPanel"
+import dynamic from "next/dynamic"
 import { motion, AnimatePresence } from "framer-motion"
 import { EditorProvider, useEditor } from "@/context/EditorContext"
+
+const TerminalPanel = dynamic(
+  () => import("@/components/workspace/TerminalPanel").then((mod) => mod.TerminalPanel),
+  { ssr: false }
+)
 
 function WorkspaceContent({ params }: { params: { owner: string, repo: string } }) {
   const [activeTab, setActiveTab] = useState("explorer")
