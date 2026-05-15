@@ -49,6 +49,7 @@ interface OmniCodeWorkspaceProps {
 }
 
 export default function WorkspacePage({ params: _params, searchParams }: OmniCodeWorkspaceProps) {
+  const [activeTab, setActiveTab] = useState("explorer")
   const [activePanel, setActivePanel] = useState<"editor" | "terminal" | "chat">("editor")
   const [activeFile, setActiveFile] = useState<string | null>(null)
   const [fileTree, setFileTree] = useState<FileNode[]>([])
@@ -306,6 +307,8 @@ export default function WorkspacePage({ params: _params, searchParams }: OmniCod
       
       <div className="flex-1 flex overflow-hidden">
         <SidebarRail 
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
           fileTree={fileTree}
           onFileSelect={loadFile}
           activeFile={activeFile}

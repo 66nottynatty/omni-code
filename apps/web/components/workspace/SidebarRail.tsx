@@ -12,9 +12,19 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+export interface FileNode {
+  name: string
+  path: string
+  type: "file" | "dir"
+  children?: FileNode[]
+}
+
 interface SidebarRailProps {
-  activeTab: string
-  setActiveTab: (tab: string) => void
+  activeTab?: string
+  setActiveTab?: (tab: string) => void
+  fileTree?: FileNode[]
+  onFileSelect?: (path: string) => void
+  activeFile?: string | null
 }
 
 const items = [
@@ -26,13 +36,19 @@ const items = [
   { id: "extensions", icon: LayoutGrid, label: "Extensions" },
 ]
 
-export function SidebarRail({ activeTab, setActiveTab }: SidebarRailProps) {
+export function SidebarRail({ 
+  activeTab = "explorer", 
+  setActiveTab,
+  fileTree: _fileTree,
+  onFileSelect: _onFileSelect,
+  activeFile: _activeFile
+}: SidebarRailProps) {
   return (
     <div className="w-12 bg-[#09090b] border-r border-border flex flex-col items-center py-4 gap-4">
       {items.map((item) => (
         <button
           key={item.id}
-          onClick={() => setActiveTab(item.id)}
+          onClick={() => setActiveTab?.(item.id)}
           title={item.label}
           className={cn(
             "p-2 rounded-md transition-colors relative group",
