@@ -17,3 +17,4 @@ cmd = "node apps/web/.next/standalone/apps/web/server.js"
 [variables]
 NIXPACKS_PATH = "/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games"
 NODE_ENV = "production"
+HOSTNAME = "0.0.0.0"
