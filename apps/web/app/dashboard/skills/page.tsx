@@ -45,7 +45,7 @@ const DEFAULT_CATEGORIES = [
   'Performance',
 ];
 
-export default function SkillsPage({ searchParams }: SkillsPageProps) {
+export default function SkillsPage({ params, searchParams }: SkillsPageProps) {
   const workspaceIdParam = searchParams.workspaceId;
   const workspaceId = workspaceIdParam ? Number(workspaceIdParam) : undefined;
   const [skills, setSkills] = useState<Skill[]>([]);

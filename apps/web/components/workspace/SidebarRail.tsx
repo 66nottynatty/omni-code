@@ -38,7 +38,7 @@ const items = [
 
 export function SidebarRail({ 
   activeTab = "explorer", 
-  setActiveTab,
+  setActiveTab = () => {},
   fileTree: _fileTree,
   onFileSelect: _onFileSelect,
   activeFile: _activeFile
