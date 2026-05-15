@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 
 interface CommandPaletteProps {
   onClose: () => void
-  onDecompose: (goal: string) => Promise<any>
+  onDecompose: (goal: string) => void | Promise<any>
 }
 
 export function CommandPalette({ onClose, onDecompose }: CommandPaletteProps) {

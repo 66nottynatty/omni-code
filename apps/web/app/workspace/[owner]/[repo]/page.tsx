@@ -24,7 +24,7 @@ function WorkspaceContent({ params }: { params: { owner: string, repo: string } 
   const { editorContent, editorLanguage, setEditorContent, activeFile } = useEditor()
 
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
-const handleSendMessage = async (goal: string): Promise<void> => { console.log("goal:", goal) }
+  const handleSendMessage = async (goal: string): Promise<any> => { console.log("goal:", goal) }
   const handleTabChange = (tab: string) => {
     if (activeTab === tab && isSidebarOpen) {
       setIsSidebarOpen(false)
