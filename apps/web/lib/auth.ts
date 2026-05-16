@@ -1,3 +1,4 @@
+// Deployment trigger: Force fresh Railway build
 import { NextAuthOptions } from "next-auth"
 import GitHubProvider from "next-auth/providers/github"
 
